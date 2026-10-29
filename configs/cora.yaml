@@ -1,0 +1,23 @@
+seed: 42
+dataset:
+  name: Cora
+  num_nodes: 20
+  num_features: 1433
+  num_classes: 7
+model:
+  hidden_dim: 64
+  dropout: 0.5
+  learning_rate: 0.01
+  weight_decay: 0.0005
+  max_epochs: 200
+  patience: 30
+fmnn:
+  theta: 0.3
+  gamma: 1.0
+refinement:
+  max_side_length: 1.0
+  volume_limit: 1000000
+  min_validation_purity: 0.2
+  min_objective_gain: 0.0
+  prune_rule:
+    max_loss_increase: 0.1

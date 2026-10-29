@@ -1,0 +1,13 @@
+seed: 42
+dataset:
+  name: Cora
+model:
+  hidden_dim: 64
+fmnn:
+  theta: 0.5
+  gamma: 1.0
+refinement:
+  max_side_length: 1.0
+  volume_limit: 1000000
+  min_validation_purity: 0.2
+  min_objective_gain: 0.0
