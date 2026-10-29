@@ -1,0 +1,607 @@
+{
+  "selection_source": "results\\tables\\validation_tuning.json",
+  "configuration": {
+    "fmnn_theta": 0.5,
+    "fmnn_gamma": 1.0,
+    "max_side_length": 1.0
+  },
+  "test_split_used_only_after_selection": true,
+  "experiments": [
+    {
+      "seed": 0,
+      "dataset": {
+        "split": "public",
+        "dataset": "CiteSeer",
+        "source": "Planetoid",
+        "num_nodes": 3327,
+        "num_features": 3703,
+        "num_classes": 6
+      },
+      "baseline_accuracy": 0.591,
+      "baseline_macro_f1": 0.5742544957918213,
+      "baseline_split_metrics": {
+        "train": {
+          "accuracy": 1.0,
+          "macro_f1": 1.0
+        },
+        "validation": {
+          "accuracy": 0.61,
+          "macro_f1": 0.5961610762251413
+        },
+        "test": {
+          "accuracy": 0.591,
+          "macro_f1": 0.5742544957918213
+        }
+      },
+      "baseline_num_hyperboxes": 86,
+      "variants": [
+        {
+          "name": "baseline",
+          "box_count": 86,
+          "accuracy": 0.591,
+          "macro_f1": 0.5742544957918213,
+          "split_metrics": {
+            "train": {
+              "accuracy": 1.0,
+              "macro_f1": 1.0
+            },
+            "validation": {
+              "accuracy": 0.61,
+              "macro_f1": 0.5961610762251413
+            },
+            "test": {
+              "accuracy": 0.591,
+              "macro_f1": 0.5742544957918213
+            }
+          }
+        },
+        {
+          "name": "merge",
+          "box_count": 56,
+          "accuracy": 0.599,
+          "macro_f1": 0.5774036497186164,
+          "split_metrics": {
+            "train": {
+              "accuracy": 1.0,
+              "macro_f1": 1.0
+            },
+            "validation": {
+              "accuracy": 0.614,
+              "macro_f1": 0.5975333714147971
+            },
+            "test": {
+              "accuracy": 0.599,
+              "macro_f1": 0.5774036497186164
+            }
+          }
+        },
+        {
+          "name": "prune",
+          "box_count": 85,
+          "accuracy": 0.591,
+          "macro_f1": 0.5742544957918213,
+          "split_metrics": {
+            "train": {
+              "accuracy": 1.0,
+              "macro_f1": 1.0
+            },
+            "validation": {
+              "accuracy": 0.61,
+              "macro_f1": 0.5969159169526862
+            },
+            "test": {
+              "accuracy": 0.591,
+              "macro_f1": 0.5742544957918213
+            }
+          }
+        },
+        {
+          "name": "full",
+          "box_count": 53,
+          "accuracy": 0.599,
+          "macro_f1": 0.5774036497186164,
+          "split_metrics": {
+            "train": {
+              "accuracy": 1.0,
+              "macro_f1": 1.0
+            },
+            "validation": {
+              "accuracy": 0.622,
+              "macro_f1": 0.606474887733139
+            },
+            "test": {
+              "accuracy": 0.599,
+              "macro_f1": 0.5774036497186164
+            }
+          }
+        }
+      ]
+    },
+    {
+      "seed": 1,
+      "dataset": {
+        "split": "public",
+        "dataset": "CiteSeer",
+        "source": "Planetoid",
+        "num_nodes": 3327,
+        "num_features": 3703,
+        "num_classes": 6
+      },
+      "baseline_accuracy": 0.648,
+      "baseline_macro_f1": 0.6162251747372612,
+      "baseline_split_metrics": {
+        "train": {
+          "accuracy": 1.0,
+          "macro_f1": 1.0
+        },
+        "validation": {
+          "accuracy": 0.628,
+          "macro_f1": 0.6129100659760304
+        },
+        "test": {
+          "accuracy": 0.648,
+          "macro_f1": 0.6162251747372612
+        }
+      },
+      "baseline_num_hyperboxes": 93,
+      "variants": [
+        {
+          "name": "baseline",
+          "box_count": 93,
+          "accuracy": 0.648,
+          "macro_f1": 0.6162251747372612,
+          "split_metrics": {
+            "train": {
+              "accuracy": 1.0,
+              "macro_f1": 1.0
+            },
+            "validation": {
+              "accuracy": 0.628,
+              "macro_f1": 0.6129100659760304
+            },
+            "test": {
+              "accuracy": 0.648,
+              "macro_f1": 0.6162251747372612
+            }
+          }
+        },
+        {
+          "name": "merge",
+          "box_count": 63,
+          "accuracy": 0.645,
+          "macro_f1": 0.6150074726370153,
+          "split_metrics": {
+            "train": {
+              "accuracy": 1.0,
+              "macro_f1": 1.0
+            },
+            "validation": {
+              "accuracy": 0.642,
+              "macro_f1": 0.6229155104815692
+            },
+            "test": {
+              "accuracy": 0.645,
+              "macro_f1": 0.6150074726370153
+            }
+          }
+        },
+        {
+          "name": "prune",
+          "box_count": 92,
+          "accuracy": 0.648,
+          "macro_f1": 0.6162251747372612,
+          "split_metrics": {
+            "train": {
+              "accuracy": 1.0,
+              "macro_f1": 1.0
+            },
+            "validation": {
+              "accuracy": 0.628,
+              "macro_f1": 0.613252710508811
+            },
+            "test": {
+              "accuracy": 0.648,
+              "macro_f1": 0.6162251747372612
+            }
+          }
+        },
+        {
+          "name": "full",
+          "box_count": 61,
+          "accuracy": 0.644,
+          "macro_f1": 0.6128325024074013,
+          "split_metrics": {
+            "train": {
+              "accuracy": 1.0,
+              "macro_f1": 1.0
+            },
+            "validation": {
+              "accuracy": 0.644,
+              "macro_f1": 0.6254935965976299
+            },
+            "test": {
+              "accuracy": 0.644,
+              "macro_f1": 0.6128325024074013
+            }
+          }
+        }
+      ]
+    },
+    {
+      "seed": 2,
+      "dataset": {
+        "split": "public",
+        "dataset": "CiteSeer",
+        "source": "Planetoid",
+        "num_nodes": 3327,
+        "num_features": 3703,
+        "num_classes": 6
+      },
+      "baseline_accuracy": 0.627,
+      "baseline_macro_f1": 0.6009946281178242,
+      "baseline_split_metrics": {
+        "train": {
+          "accuracy": 1.0,
+          "macro_f1": 1.0
+        },
+        "validation": {
+          "accuracy": 0.626,
+          "macro_f1": 0.6014512288169578
+        },
+        "test": {
+          "accuracy": 0.627,
+          "macro_f1": 0.6009946281178242
+        }
+      },
+      "baseline_num_hyperboxes": 92,
+      "variants": [
+        {
+          "name": "baseline",
+          "box_count": 92,
+          "accuracy": 0.627,
+          "macro_f1": 0.6009946281178242,
+          "split_metrics": {
+            "train": {
+              "accuracy": 1.0,
+              "macro_f1": 1.0
+            },
+            "validation": {
+              "accuracy": 0.626,
+              "macro_f1": 0.6014512288169578
+            },
+            "test": {
+              "accuracy": 0.627,
+              "macro_f1": 0.6009946281178242
+            }
+          }
+        },
+        {
+          "name": "merge",
+          "box_count": 61,
+          "accuracy": 0.648,
+          "macro_f1": 0.6176626861183708,
+          "split_metrics": {
+            "train": {
+              "accuracy": 1.0,
+              "macro_f1": 1.0
+            },
+            "validation": {
+              "accuracy": 0.652,
+              "macro_f1": 0.6201758619625329
+            },
+            "test": {
+              "accuracy": 0.648,
+              "macro_f1": 0.6176626861183708
+            }
+          }
+        },
+        {
+          "name": "prune",
+          "box_count": 91,
+          "accuracy": 0.627,
+          "macro_f1": 0.6009946281178242,
+          "split_metrics": {
+            "train": {
+              "accuracy": 0.9833333333333333,
+              "macro_f1": 0.9832915622389305
+            },
+            "validation": {
+              "accuracy": 0.628,
+              "macro_f1": 0.6035269115378018
+            },
+            "test": {
+              "accuracy": 0.627,
+              "macro_f1": 0.6009946281178242
+            }
+          }
+        },
+        {
+          "name": "full",
+          "box_count": 51,
+          "accuracy": 0.679,
+          "macro_f1": 0.6319166256195649,
+          "split_metrics": {
+            "train": {
+              "accuracy": 0.975,
+              "macro_f1": 0.9749530173150198
+            },
+            "validation": {
+              "accuracy": 0.702,
+              "macro_f1": 0.6494491132234604
+            },
+            "test": {
+              "accuracy": 0.679,
+              "macro_f1": 0.6319166256195649
+            }
+          }
+        }
+      ]
+    },
+    {
+      "seed": 3,
+      "dataset": {
+        "split": "public",
+        "dataset": "CiteSeer",
+        "source": "Planetoid",
+        "num_nodes": 3327,
+        "num_features": 3703,
+        "num_classes": 6
+      },
+      "baseline_accuracy": 0.674,
+      "baseline_macro_f1": 0.6293865615076311,
+      "baseline_split_metrics": {
+        "train": {
+          "accuracy": 1.0,
+          "macro_f1": 1.0
+        },
+        "validation": {
+          "accuracy": 0.658,
+          "macro_f1": 0.6216078309679891
+        },
+        "test": {
+          "accuracy": 0.674,
+          "macro_f1": 0.6293865615076311
+        }
+      },
+      "baseline_num_hyperboxes": 94,
+      "variants": [
+        {
+          "name": "baseline",
+          "box_count": 94,
+          "accuracy": 0.674,
+          "macro_f1": 0.6293865615076311,
+          "split_metrics": {
+            "train": {
+              "accuracy": 1.0,
+              "macro_f1": 1.0
+            },
+            "validation": {
+              "accuracy": 0.658,
+              "macro_f1": 0.6216078309679891
+            },
+            "test": {
+              "accuracy": 0.674,
+              "macro_f1": 0.6293865615076311
+            }
+          }
+        },
+        {
+          "name": "merge",
+          "box_count": 62,
+          "accuracy": 0.662,
+          "macro_f1": 0.6193620437142091,
+          "split_metrics": {
+            "train": {
+              "accuracy": 1.0,
+              "macro_f1": 1.0
+            },
+            "validation": {
+              "accuracy": 0.652,
+              "macro_f1": 0.6153624993214032
+            },
+            "test": {
+              "accuracy": 0.662,
+              "macro_f1": 0.6193620437142091
+            }
+          }
+        },
+        {
+          "name": "prune",
+          "box_count": 93,
+          "accuracy": 0.674,
+          "macro_f1": 0.6293865615076311,
+          "split_metrics": {
+            "train": {
+              "accuracy": 1.0,
+              "macro_f1": 1.0
+            },
+            "validation": {
+              "accuracy": 0.658,
+              "macro_f1": 0.6217562737001638
+            },
+            "test": {
+              "accuracy": 0.674,
+              "macro_f1": 0.6293865615076311
+            }
+          }
+        },
+        {
+          "name": "full",
+          "box_count": 55,
+          "accuracy": 0.68,
+          "macro_f1": 0.6287217625808618,
+          "split_metrics": {
+            "train": {
+              "accuracy": 0.9916666666666667,
+              "macro_f1": 0.9916614550760893
+            },
+            "validation": {
+              "accuracy": 0.69,
+              "macro_f1": 0.6521810268183991
+            },
+            "test": {
+              "accuracy": 0.68,
+              "macro_f1": 0.6287217625808618
+            }
+          }
+        }
+      ]
+    },
+    {
+      "seed": 4,
+      "dataset": {
+        "split": "public",
+        "dataset": "CiteSeer",
+        "source": "Planetoid",
+        "num_nodes": 3327,
+        "num_features": 3703,
+        "num_classes": 6
+      },
+      "baseline_accuracy": 0.659,
+      "baseline_macro_f1": 0.6230596169035588,
+      "baseline_split_metrics": {
+        "train": {
+          "accuracy": 1.0,
+          "macro_f1": 1.0
+        },
+        "validation": {
+          "accuracy": 0.654,
+          "macro_f1": 0.6275866975786776
+        },
+        "test": {
+          "accuracy": 0.659,
+          "macro_f1": 0.6230596169035588
+        }
+      },
+      "baseline_num_hyperboxes": 89,
+      "variants": [
+        {
+          "name": "baseline",
+          "box_count": 89,
+          "accuracy": 0.659,
+          "macro_f1": 0.6230596169035588,
+          "split_metrics": {
+            "train": {
+              "accuracy": 1.0,
+              "macro_f1": 1.0
+            },
+            "validation": {
+              "accuracy": 0.654,
+              "macro_f1": 0.6275866975786776
+            },
+            "test": {
+              "accuracy": 0.659,
+              "macro_f1": 0.6230596169035588
+            }
+          }
+        },
+        {
+          "name": "merge",
+          "box_count": 55,
+          "accuracy": 0.643,
+          "macro_f1": 0.613453653002084,
+          "split_metrics": {
+            "train": {
+              "accuracy": 1.0,
+              "macro_f1": 1.0
+            },
+            "validation": {
+              "accuracy": 0.654,
+              "macro_f1": 0.6244775145822534
+            },
+            "test": {
+              "accuracy": 0.643,
+              "macro_f1": 0.613453653002084
+            }
+          }
+        },
+        {
+          "name": "prune",
+          "box_count": 87,
+          "accuracy": 0.673,
+          "macro_f1": 0.6194491303654245,
+          "split_metrics": {
+            "train": {
+              "accuracy": 0.9916666666666667,
+              "macro_f1": 0.9916614550760893
+            },
+            "validation": {
+              "accuracy": 0.676,
+              "macro_f1": 0.6209287159350738
+            },
+            "test": {
+              "accuracy": 0.673,
+              "macro_f1": 0.6194491303654245
+            }
+          }
+        },
+        {
+          "name": "full",
+          "box_count": 48,
+          "accuracy": 0.67,
+          "macro_f1": 0.62103267442947,
+          "split_metrics": {
+            "train": {
+              "accuracy": 0.9666666666666667,
+              "macro_f1": 0.9654148922441604
+            },
+            "validation": {
+              "accuracy": 0.684,
+              "macro_f1": 0.6385607688726328
+            },
+            "test": {
+              "accuracy": 0.67,
+              "macro_f1": 0.62103267442947
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "aggregate": {
+    "baseline": {
+      "mean_test_accuracy": 0.6397999999999999,
+      "mean_test_macro_f1": 0.6087840954116194,
+      "box_count_mean": 90.8,
+      "sample_count": 5,
+      "test_accuracy_std": 0.03221335126931071,
+      "test_macro_f1_std": 0.022003356762431123,
+      "test_accuracy_95ci_half_width": 0.03999174623644237,
+      "test_macro_f1_95ci_half_width": 0.027316396007247296,
+      "test_accuracy_delta_vs_baseline": 0.0
+    },
+    "merge": {
+      "mean_test_accuracy": 0.6394,
+      "mean_test_macro_f1": 0.6085779010380591,
+      "box_count_mean": 59.4,
+      "sample_count": 5,
+      "test_accuracy_std": 0.023776038357977154,
+      "test_macro_f1_std": 0.017576812472001206,
+      "test_accuracy_95ci_half_width": 0.029517118059864875,
+      "test_macro_f1_95ci_half_width": 0.021820996460417283,
+      "test_accuracy_delta_vs_baseline": -0.00039999999999995595
+    },
+    "prune": {
+      "mean_test_accuracy": 0.6426000000000001,
+      "mean_test_macro_f1": 0.6080619981039925,
+      "box_count_mean": 89.6,
+      "sample_count": 5,
+      "test_accuracy_std": 0.034803735431703335,
+      "test_macro_f1_std": 0.021470538939148357,
+      "test_accuracy_95ci_half_width": 0.043207617358053924,
+      "test_macro_f1_95ci_half_width": 0.026654921359644326,
+      "test_accuracy_delta_vs_baseline": 0.0028000000000001357
+    },
+    "full": {
+      "mean_test_accuracy": 0.6544,
+      "mean_test_macro_f1": 0.6143814429511829,
+      "box_count_mean": 53.6,
+      "sample_count": 5,
+      "test_accuracy_std": 0.0342096477619984,
+      "test_macro_f1_std": 0.021949502771311514,
+      "test_accuracy_95ci_half_width": 0.04247007834417077,
+      "test_macro_f1_95ci_half_width": 0.027249538165333563,
+      "test_accuracy_delta_vs_baseline": 0.014600000000000057
+    }
+  }
+}

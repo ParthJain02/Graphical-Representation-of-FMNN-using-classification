@@ -29,3 +29,42 @@ def test_real_cora_loader_works():
     assert ds.train_mask.sum() > 0
     assert ds.val_mask.sum() > 0
     assert ds.test_mask.sum() > 0
+
+
+def test_planetoid_loader_canonicalizes_citeseer(monkeypatch):
+    import src.data as data_module
+
+    calls = {}
+
+    class FakeTensor:
+        def __init__(self, value):
+            self.value = value
+
+        def numpy(self):
+            return self.value
+
+        def max(self):
+            return self
+
+        def item(self):
+            return 1
+
+    class FakeData:
+        x = FakeTensor(np.ones((2, 3), dtype=np.float32))
+        y = FakeTensor(np.array([0, 1], dtype=np.int64))
+        edge_index = FakeTensor(np.array([[0, 1], [1, 0]], dtype=np.int64))
+        train_mask = FakeTensor(np.array([True, False]))
+        val_mask = FakeTensor(np.array([False, True]))
+        test_mask = FakeTensor(np.array([False, False]))
+
+    class FakePlanetoid:
+        def __init__(self, root, name, split):
+            calls.update(root=root, name=name, split=split)
+
+        def __getitem__(self, index):
+            return FakeData()
+
+    monkeypatch.setattr(data_module, 'Planetoid', FakePlanetoid)
+    dataset = data_module.load_dataset('citeseer')
+    assert calls['name'] == 'CiteSeer'
+    assert dataset.metadata['dataset'] == 'CiteSeer'

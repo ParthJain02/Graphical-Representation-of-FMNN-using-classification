@@ -30,6 +30,7 @@ This project implements the research scaffold for a GCN + FMNN baseline and a gr
 - Frozen held-out test evaluation: complete; final results are stored in `results/tables/final_evaluation.json`
 - Multi-seed robustness evaluation: configured for five seeds with standard deviations and 95% confidence-interval half-widths
 - Conservative validation-improving pruning: complete; pruning now accepts only strict validation-objective improvements and recomputes class coverage after each removal
+- CiteSeer generalization evaluation: configured with the frozen Cora-selected configuration; no CiteSeer retuning is performed
 
 ## Verification commands
 
@@ -55,3 +56,12 @@ The frozen validation-selected configuration produced the following five-seed te
 Pruning now retains approximately 98.5% of the baseline boxes on average instead of collapsing to a small, unsafe representation. These are held-out test results after validation-only selection; they should be reported as the current experiment outcome, not as a universal claim of improvement.
 
 The robustness evaluation now uses five seeds and reports uncertainty in `results/tables/final_evaluation.json`. Confidence intervals describe variation across these experiment seeds; they are not a substitute for additional datasets or repeated graph splits.
+
+The frozen Cora-selected configuration was also evaluated on CiteSeer without retuning. CiteSeer results are stored in `results/tables/final_evaluation_citeseer.json`:
+
+- Baseline: accuracy 0.6398, macro-F1 0.6088
+- Merge: accuracy 0.6394, macro-F1 0.6086, delta -0.0004
+- Prune: accuracy 0.6426, macro-F1 0.6081, delta +0.0028
+- Full: accuracy 0.6544, macro-F1 0.6144, delta +0.0146
+
+The frozen refinement behavior generalizes more favorably to CiteSeer than to Cora: full refinement improves CiteSeer accuracy by 1.46 percentage points while reducing the mean box count from 90.8 to 53.6. This is cross-dataset evidence, not a claim of universal improvement.

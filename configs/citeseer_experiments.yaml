@@ -1,0 +1,16 @@
+experiments:
+  - name: CiteSeer-E1
+    seed: 0
+    dataset_name: CiteSeer
+  - name: CiteSeer-E2
+    seed: 1
+    dataset_name: CiteSeer
+  - name: CiteSeer-E3
+    seed: 2
+    dataset_name: CiteSeer
+  - name: CiteSeer-E4
+    seed: 3
+    dataset_name: CiteSeer
+  - name: CiteSeer-E5
+    seed: 4
+    dataset_name: CiteSeer

@@ -42,10 +42,15 @@ def validate_masks(
         raise ValueError('Dataset cannot be empty.')
 
 
-def load_cora_dataset(root: str | Path = 'data', split: str = 'public') -> DatasetBundle:
+def load_planetoid_dataset(
+    dataset_name: str,
+    root: str | Path = 'data',
+    split: str = 'public',
+) -> DatasetBundle:
     if Planetoid is None:
-        raise RuntimeError('torch_geometric is required to load the real Cora dataset.')
-    dataset = Planetoid(root=str(root), name='Cora', split=split)
+        raise RuntimeError('torch_geometric is required to load real Planetoid datasets.')
+    canonical_name = {'cora': 'Cora', 'citeseer': 'CiteSeer', 'pubmed': 'PubMed'}[dataset_name.lower()]
+    dataset = Planetoid(root=str(root), name=canonical_name, split=split)
     data = dataset[0]
     x = np.asarray(data.x.numpy(), dtype=np.float32)
     y = np.asarray(data.y.numpy(), dtype=np.int64)
@@ -62,7 +67,14 @@ def load_cora_dataset(root: str | Path = 'data', split: str = 'public') -> Datas
         val_mask=val_mask,
         test_mask=test_mask,
         num_classes=int(data.y.max().item()) + 1,
-        metadata={'split': split, 'dataset': 'Cora', 'source': 'Planetoid', 'num_nodes': int(x.shape[0])},
+        metadata={
+            'split': split,
+            'dataset': canonical_name,
+            'source': 'Planetoid',
+            'num_nodes': int(x.shape[0]),
+            'num_features': int(x.shape[1]),
+            'num_classes': int(data.y.max().item()) + 1,
+        },
     )
 
 
@@ -77,7 +89,7 @@ def load_dataset(
 ) -> DatasetBundle:
     name = str(dataset_name).lower()
     if name in {'cora', 'citeseer', 'pubmed'}:
-        return load_cora_dataset(root=root, split=split)
+        return load_planetoid_dataset(name, root=root, split=split)
     if name in {'synthetic-cora', 'synthetic'}:
         return load_cora_like_dataset(num_nodes=num_nodes, num_features=num_features, num_classes=num_classes, seed=seed)
     raise ValueError(f'Unsupported dataset name: {dataset_name}')
