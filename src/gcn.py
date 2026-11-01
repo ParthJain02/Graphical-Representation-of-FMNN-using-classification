@@ -33,6 +33,7 @@ class GCNModel(nn.Module):
         self.dropout = nn.Dropout(self.config.dropout)
         self._last_embeddings: np.ndarray | None = None
         self._last_edge_index: torch.Tensor | None = None
+        self.selected_epoch: int = 0
 
     def _make_edge_index(self, num_nodes: int, edge_index: np.ndarray | torch.Tensor | None = None) -> torch.Tensor:
         if edge_index is not None:
@@ -85,11 +86,12 @@ class GCNModel(nn.Module):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.config.learning_rate, weight_decay=self.config.weight_decay)
         criterion = nn.CrossEntropyLoss()
         best_state = {k: v.detach().clone() for k, v in self.state_dict().items()}
+        best_val_f1 = float('-inf')
         best_val_loss = float('inf')
         patience_remaining = self.config.patience
         epochs = self.config.max_epochs if max_epochs is None else max_epochs
 
-        for _ in range(int(epochs)):
+        for epoch in range(int(epochs)):
             self.train()
             optimizer.zero_grad()
             logits = self(x_tensor, edge_tensor)
@@ -102,8 +104,16 @@ class GCNModel(nn.Module):
                     self.eval()
                     val_logits = self(x_tensor, edge_tensor)
                     val_loss = criterion(val_logits[val_mask_tensor], y_tensor[val_mask_tensor])
-                    if val_loss.item() < best_val_loss:
+                    val_predictions = torch.argmax(val_logits[val_mask_tensor], dim=1).cpu().numpy()
+                    val_labels = y_tensor[val_mask_tensor].cpu().numpy()
+                    val_f1 = _macro_f1(val_labels, val_predictions, self.num_classes)
+                    improved = val_f1 > best_val_f1 or (
+                        np.isclose(val_f1, best_val_f1) and val_loss.item() < best_val_loss
+                    )
+                    if improved:
+                        best_val_f1 = val_f1
                         best_val_loss = val_loss.item()
+                        self.selected_epoch = epoch + 1
                         best_state = {k: v.detach().clone() for k, v in self.state_dict().items()}
                         patience_remaining = self.config.patience
                     else:
@@ -118,7 +128,6 @@ class GCNModel(nn.Module):
         with torch.no_grad():
             self._last_embeddings = self.embed(x_tensor, edge_tensor)
         return self
-
     def embed(self, x: np.ndarray | torch.Tensor, edge_index: np.ndarray | torch.Tensor | None = None) -> np.ndarray:
         x_tensor = torch.as_tensor(x, dtype=torch.float32)
         edge = self._make_edge_index(x_tensor.shape[0], edge_index if edge_index is not None else self._last_edge_index)
@@ -135,3 +144,14 @@ class GCNModel(nn.Module):
         with torch.no_grad():
             logits = self(x_tensor, edge)
             return torch.argmax(logits, dim=1).cpu().numpy()
+
+
+def _macro_f1(labels: np.ndarray, predictions: np.ndarray, num_classes: int) -> float:
+    scores = []
+    for cls in range(num_classes):
+        true_positive = np.sum((labels == cls) & (predictions == cls))
+        false_positive = np.sum((labels != cls) & (predictions == cls))
+        false_negative = np.sum((labels == cls) & (predictions != cls))
+        denominator = 2 * true_positive + false_positive + false_negative
+        scores.append(0.0 if denominator == 0 else (2 * true_positive) / denominator)
+    return float(np.mean(scores))

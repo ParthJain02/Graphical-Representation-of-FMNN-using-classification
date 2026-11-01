@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 import yaml
@@ -11,8 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from src.gshr.hyperbox import HyperboxRecord
-from src.gshr.refinement import GraphStructureAwareRefinement
+from src.experiment import ExperimentConfig, run_refinement_ablation
 
 
 def main() -> None:
@@ -23,25 +23,51 @@ def main() -> None:
 
     with open(args.config, 'r', encoding='utf-8') as fh:
         cfg = yaml.safe_load(fh) or {}
-    boxes = [
-        HyperboxRecord(box_id=1, lower=[0.0, 0.0], upper=[1.0, 1.0], label=0, members={1, 2}),
-        HyperboxRecord(box_id=2, lower=[0.2, 0.2], upper=[0.8, 0.8], label=0, members={3, 4}),
-        HyperboxRecord(box_id=3, lower=[2.0, 2.0], upper=[3.0, 3.0], label=1, members={5, 6}),
-    ]
-    refinement = GraphStructureAwareRefinement(boxes)
-    if args.mode in {'merge', 'full'}:
-        boxes = refinement.merge(max_side_length=cfg.get('refinement', {}).get('max_side_length', 1.0), volume_limit=float(cfg.get('refinement', {}).get('volume_limit', 1e6)))
-    if args.mode in {'prune', 'full'}:
-        boxes = refinement.prune(cfg.get('refinement', {}).get('prune_rule', {'max_loss_increase': 0.1}))
+    dataset_cfg = cfg.get('dataset', {})
+    model_cfg = cfg.get('model', {})
+    fmnn_cfg = cfg.get('fmnn', {})
+    refinement_cfg = cfg.get('refinement', {})
+    experiment = ExperimentConfig(
+        seed=int(cfg.get('seed', 0)),
+        dataset_name=str(dataset_cfg.get('name', 'synthetic-cora')),
+        data_root=str(dataset_cfg.get('root', 'data')),
+        num_nodes=int(dataset_cfg.get('num_nodes', 20)),
+        num_features=int(dataset_cfg.get('num_features', 8)),
+        num_classes=int(dataset_cfg.get('num_classes', 4)),
+        hidden_dim=int(model_cfg.get('hidden_dim', 64)),
+        dropout=float(model_cfg.get('dropout', 0.5)),
+        learning_rate=float(model_cfg.get('learning_rate', 0.01)),
+        weight_decay=float(model_cfg.get('weight_decay', 0.0005)),
+        max_epochs=int(model_cfg.get('max_epochs', 200)),
+        patience=int(model_cfg.get('patience', 30)),
+        fmnn_theta=float(fmnn_cfg.get('theta', 0.3)),
+        fmnn_gamma=float(fmnn_cfg.get('gamma', 1.0)),
+        max_side_length=float(refinement_cfg.get('max_side_length', 1.0)),
+        volume_limit=float(refinement_cfg.get('volume_limit', 1e6)),
+        min_validation_purity=float(refinement_cfg.get('min_validation_purity', 0.2)),
+        min_objective_gain=float(refinement_cfg.get('min_objective_gain', 0.0)),
+    )
+    result = run_refinement_ablation(experiment)
+    selected = next(item for item in result['variants'] if item['name'] == args.mode)
+    payload = {
+        'mode': args.mode,
+        'seed': experiment.seed,
+        'dataset': result['dataset'],
+        'baseline': {
+            'box_count': result['baseline_num_hyperboxes'],
+            'accuracy': result['baseline_accuracy'],
+            'macro_f1': result['baseline_macro_f1'],
+        },
+        'variants': result['variants'],
+        'selected_variant': selected,
+    }
     out = Path('results/processed')
     out.mkdir(parents=True, exist_ok=True)
-    payload = [
-        {'box_id': box.box_id, 'label': box.label, 'members': sorted(box.members), 'status': box.status}
-        for box in boxes
-    ]
-    with (out / 'gshr_run.json').open('w', encoding='utf-8') as fh:
+    run_id = datetime.now(timezone.utc).strftime(f'gshr_{args.mode}_seed_{experiment.seed}_%Y%m%dT%H%M%SZ')
+    output_path = out / f'{run_id}.json'
+    with output_path.open('x', encoding='utf-8') as fh:
         json.dump(payload, fh, indent=2)
-    print({'mode': args.mode, 'box_count': len(boxes)})
+    print({'mode': args.mode, 'box_count': selected['box_count'], 'output': str(output_path)})
 
 
 if __name__ == '__main__':

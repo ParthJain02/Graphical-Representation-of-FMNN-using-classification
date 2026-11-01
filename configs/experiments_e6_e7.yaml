@@ -1,0 +1,24 @@
+experiments:
+  - name: seed_0
+    seed: 0
+    dataset_name: Cora
+  - name: seed_1
+    seed: 1
+    dataset_name: Cora
+  - name: seed_2
+    seed: 2
+    dataset_name: Cora
+  - name: seed_3
+    seed: 3
+    dataset_name: Cora
+  - name: seed_4
+    seed: 4
+    dataset_name: Cora
+
+ablation_variants:
+  - name: E6
+    mode: full
+    graph_enabled: true
+  - name: E7
+    mode: full
+    graph_enabled: false

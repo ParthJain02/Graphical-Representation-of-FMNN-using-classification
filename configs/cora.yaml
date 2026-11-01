@@ -1,6 +1,7 @@
 seed: 42
 dataset:
   name: Cora
+  root: data
   num_nodes: 20
   num_features: 1433
   num_classes: 7

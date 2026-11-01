@@ -14,3 +14,28 @@ experiments:
   - name: E5
     seed: 4
     dataset_name: Cora
+
+ablation_variants:
+  - name: E1
+    mode: softmax
+  - name: E2
+    mode: baseline
+  - name: E3
+    mode: geometry_merge
+    graph_enabled: false
+  - name: E4
+    mode: graph_merge
+    graph_enabled: true
+  - name: E5
+    mode: prune
+    graph_enabled: true
+  - name: E6
+    mode: full
+    graph_enabled: true
+  - name: E7
+    mode: full
+    graph_enabled: false
+  - name: E8
+    mode: unsafe_full
+    graph_enabled: true
+    class_purity_safeguards: false

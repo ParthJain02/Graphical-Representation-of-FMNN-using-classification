@@ -9,6 +9,7 @@ This repository contains a reproducible research scaffold for a graph neural net
 - `configs/`: YAML experiment templates.
 - `tests/`: validation tests for data, graph statistics, merging, and pruning safety.
 - `results/`: experiment outputs, tables, and figures.
+- `RESEARCH_REPORT.md`: evidence-based protocol, literature summary, results, and limitations.
 
 ## Baseline status
 
@@ -25,6 +26,12 @@ python scripts/evaluate.py --results-dir results/
 python scripts/tune_validation.py --config configs/experiments.yaml
 python scripts/final_evaluation.py
 python scripts/final_evaluation.py --experiments configs/citeseer_experiments.yaml --output results/tables/final_evaluation_citeseer.json
+```
+
+The authoritative corrected E1-E8 artifact is `results/tables/ablation_summary_corrected.json`; generate its aggregate table and figures with:
+
+```bash
+python scripts/evaluate.py --results-dir results/ --ablation results/tables/ablation_summary_corrected.json
 ```
 
 ## Notes
