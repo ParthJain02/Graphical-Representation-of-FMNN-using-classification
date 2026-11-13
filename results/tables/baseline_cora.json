@@ -1,0 +1,347 @@
+{
+  "dataset": "Cora",
+  "config_path": "configs/cora.yaml",
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "variants": [
+    "B1_gnn_softmax",
+    "B2_gnn_fmnn"
+  ],
+  "runs": [
+    {
+      "dataset": "Cora",
+      "seed": 0,
+      "variant": "B1_gnn_softmax",
+      "test_accuracy": 0.8,
+      "test_macro_f1": 0.7971029148601678,
+      "test_micro_f1": 0.8,
+      "val_accuracy": 0.79,
+      "val_macro_f1": 0.7803738018250909,
+      "num_boxes": 0,
+      "mean_box_size": 0.0,
+      "max_box_size": 0.0,
+      "cross_class_overlap": 0,
+      "chosen_tau_merge": null,
+      "chosen_tau_prune": null,
+      "gnn_train_time": 0.7334842999998727,
+      "fmnn_fit_time": 0.0,
+      "refine_time": 0.0,
+      "pred_latency_per_node": 4.683600000134902e-06,
+      "peak_memory_mb": 0.43267345428466797
+    },
+    {
+      "dataset": "Cora",
+      "seed": 0,
+      "variant": "B2_gnn_fmnn",
+      "test_accuracy": 0.783,
+      "test_macro_f1": 0.7836437223066769,
+      "test_micro_f1": 0.783,
+      "val_accuracy": 0.774,
+      "val_macro_f1": 0.7639162154158399,
+      "num_boxes": 14,
+      "mean_box_size": 14.367636848051916,
+      "max_box_size": 19.18472537022899,
+      "cross_class_overlap": 0,
+      "chosen_tau_merge": null,
+      "chosen_tau_prune": null,
+      "gnn_train_time": 0.7334842999998727,
+      "fmnn_fit_time": 0.00901239999984682,
+      "refine_time": 0.0,
+      "pred_latency_per_node": 7.99090000009528e-06,
+      "peak_memory_mb": 8.336211204528809
+    },
+    {
+      "dataset": "Cora",
+      "seed": 1,
+      "variant": "B1_gnn_softmax",
+      "test_accuracy": 0.797,
+      "test_macro_f1": 0.7895902738260766,
+      "test_micro_f1": 0.797,
+      "val_accuracy": 0.78,
+      "val_macro_f1": 0.7771407496727303,
+      "num_boxes": 0,
+      "mean_box_size": 0.0,
+      "max_box_size": 0.0,
+      "cross_class_overlap": 0,
+      "chosen_tau_merge": null,
+      "chosen_tau_prune": null,
+      "gnn_train_time": 0.7835298999998486,
+      "fmnn_fit_time": 0.0,
+      "refine_time": 0.0,
+      "pred_latency_per_node": 6.3716999998177925e-06,
+      "peak_memory_mb": 0.43267345428466797
+    },
+    {
+      "dataset": "Cora",
+      "seed": 1,
+      "variant": "B2_gnn_fmnn",
+      "test_accuracy": 0.767,
+      "test_macro_f1": 0.7671628305630226,
+      "test_micro_f1": 0.767,
+      "val_accuracy": 0.752,
+      "val_macro_f1": 0.750705470610732,
+      "num_boxes": 11,
+      "mean_box_size": 13.90355190465396,
+      "max_box_size": 19.19791220407933,
+      "cross_class_overlap": 0,
+      "chosen_tau_merge": null,
+      "chosen_tau_prune": null,
+      "gnn_train_time": 0.7835298999998486,
+      "fmnn_fit_time": 0.009819199999583361,
+      "refine_time": 0.0,
+      "pred_latency_per_node": 4.862599999796658e-06,
+      "peak_memory_mb": 5.886122703552246
+    },
+    {
+      "dataset": "Cora",
+      "seed": 2,
+      "variant": "B1_gnn_softmax",
+      "test_accuracy": 0.795,
+      "test_macro_f1": 0.7885213547744254,
+      "test_micro_f1": 0.795,
+      "val_accuracy": 0.794,
+      "val_macro_f1": 0.7828387340752475,
+      "num_boxes": 0,
+      "mean_box_size": 0.0,
+      "max_box_size": 0.0,
+      "cross_class_overlap": 0,
+      "chosen_tau_merge": null,
+      "chosen_tau_prune": null,
+      "gnn_train_time": 0.6938946000000215,
+      "fmnn_fit_time": 0.0,
+      "refine_time": 0.0,
+      "pred_latency_per_node": 4.739900000004127e-06,
+      "peak_memory_mb": 0.43267345428466797
+    },
+    {
+      "dataset": "Cora",
+      "seed": 2,
+      "variant": "B2_gnn_fmnn",
+      "test_accuracy": 0.779,
+      "test_macro_f1": 0.7835833566741429,
+      "test_micro_f1": 0.779,
+      "val_accuracy": 0.74,
+      "val_macro_f1": 0.7385376791710626,
+      "num_boxes": 15,
+      "mean_box_size": 16.432353703243038,
+      "max_box_size": 19.15292920358479,
+      "cross_class_overlap": 0,
+      "chosen_tau_merge": null,
+      "chosen_tau_prune": null,
+      "gnn_train_time": 0.6938946000000215,
+      "fmnn_fit_time": 0.012309399999594461,
+      "refine_time": 0.0,
+      "pred_latency_per_node": 1.4421500000025844e-05,
+      "peak_memory_mb": 8.343810081481934
+    },
+    {
+      "dataset": "Cora",
+      "seed": 3,
+      "variant": "B1_gnn_softmax",
+      "test_accuracy": 0.814,
+      "test_macro_f1": 0.8041585602381905,
+      "test_micro_f1": 0.814,
+      "val_accuracy": 0.798,
+      "val_macro_f1": 0.7819042334057525,
+      "num_boxes": 0,
+      "mean_box_size": 0.0,
+      "max_box_size": 0.0,
+      "cross_class_overlap": 0,
+      "chosen_tau_merge": null,
+      "chosen_tau_prune": null,
+      "gnn_train_time": 0.7280900999999176,
+      "fmnn_fit_time": 0.0,
+      "refine_time": 0.0,
+      "pred_latency_per_node": 3.3367000000907864e-06,
+      "peak_memory_mb": 0.43267345428466797
+    },
+    {
+      "dataset": "Cora",
+      "seed": 3,
+      "variant": "B2_gnn_fmnn",
+      "test_accuracy": 0.799,
+      "test_macro_f1": 0.7886193925158912,
+      "test_micro_f1": 0.799,
+      "val_accuracy": 0.794,
+      "val_macro_f1": 0.7813479505077892,
+      "num_boxes": 13,
+      "mean_box_size": 15.035524376166554,
+      "max_box_size": 19.188958573620766,
+      "cross_class_overlap": 0,
+      "chosen_tau_merge": null,
+      "chosen_tau_prune": null,
+      "gnn_train_time": 0.7280900999999176,
+      "fmnn_fit_time": 0.00836299999991752,
+      "refine_time": 0.0,
+      "pred_latency_per_node": 7.721200000105455e-06,
+      "peak_memory_mb": 8.320761680603027
+    },
+    {
+      "dataset": "Cora",
+      "seed": 4,
+      "variant": "B1_gnn_softmax",
+      "test_accuracy": 0.811,
+      "test_macro_f1": 0.805005608575299,
+      "test_micro_f1": 0.811,
+      "val_accuracy": 0.798,
+      "val_macro_f1": 0.7883497681899355,
+      "num_boxes": 0,
+      "mean_box_size": 0.0,
+      "max_box_size": 0.0,
+      "cross_class_overlap": 0,
+      "chosen_tau_merge": null,
+      "chosen_tau_prune": null,
+      "gnn_train_time": 0.692652900000212,
+      "fmnn_fit_time": 0.0,
+      "refine_time": 0.0,
+      "pred_latency_per_node": 4.678899999817077e-06,
+      "peak_memory_mb": 0.43267345428466797
+    },
+    {
+      "dataset": "Cora",
+      "seed": 4,
+      "variant": "B2_gnn_fmnn",
+      "test_accuracy": 0.768,
+      "test_macro_f1": 0.7670179901843392,
+      "test_micro_f1": 0.768,
+      "val_accuracy": 0.756,
+      "val_macro_f1": 0.7438922335870994,
+      "num_boxes": 15,
+      "mean_box_size": 13.77405258480964,
+      "max_box_size": 19.18279861472547,
+      "cross_class_overlap": 0,
+      "chosen_tau_merge": null,
+      "chosen_tau_prune": null,
+      "gnn_train_time": 0.692652900000212,
+      "fmnn_fit_time": 0.01019670000005135,
+      "refine_time": 0.0,
+      "pred_latency_per_node": 1.1935799999719165e-05,
+      "peak_memory_mb": 8.343771934509277
+    }
+  ],
+  "summary": {
+    "B1_gnn_softmax": {
+      "num_seeds": 5,
+      "test_accuracy": {
+        "mean": 0.8034000000000001,
+        "std": 0.00856154191720157
+      },
+      "test_macro_f1": {
+        "mean": 0.796875742454832,
+        "std": 0.007779132534530685
+      },
+      "test_micro_f1": {
+        "mean": 0.8034000000000001,
+        "std": 0.00856154191720157
+      },
+      "val_accuracy": {
+        "mean": 0.792,
+        "std": 0.007483314773547889
+      },
+      "val_macro_f1": {
+        "mean": 0.7821214574337513,
+        "std": 0.004099246176480299
+      },
+      "num_boxes": {
+        "mean": 0.0,
+        "std": 0.0
+      },
+      "mean_box_size": {
+        "mean": 0.0,
+        "std": 0.0
+      },
+      "max_box_size": {
+        "mean": 0.0,
+        "std": 0.0
+      },
+      "cross_class_overlap": {
+        "mean": 0.0,
+        "std": 0.0
+      },
+      "gnn_train_time": {
+        "mean": 0.7263303599999744,
+        "std": 0.03712247552829989
+      },
+      "fmnn_fit_time": {
+        "mean": 0.0,
+        "std": 0.0
+      },
+      "refine_time": {
+        "mean": 0.0,
+        "std": 0.0
+      },
+      "pred_latency_per_node": {
+        "mean": 4.762159999972937e-06,
+        "std": 1.0765865770066654e-06
+      },
+      "peak_memory_mb": {
+        "mean": 0.43267345428466797,
+        "std": 0.0
+      }
+    },
+    "B2_gnn_fmnn": {
+      "num_seeds": 5,
+      "test_accuracy": {
+        "mean": 0.7792,
+        "std": 0.013046072205840357
+      },
+      "test_macro_f1": {
+        "mean": 0.7780054584488145,
+        "std": 0.010171597743912379
+      },
+      "test_micro_f1": {
+        "mean": 0.7792,
+        "std": 0.013046072205840357
+      },
+      "val_accuracy": {
+        "mean": 0.7632,
+        "std": 0.02109976303184471
+      },
+      "val_macro_f1": {
+        "mean": 0.7556799098585045,
+        "std": 0.01720636125578141
+      },
+      "num_boxes": {
+        "mean": 13.6,
+        "std": 1.6733200530681511
+      },
+      "mean_box_size": {
+        "mean": 14.702623883385021,
+        "std": 1.0857906088851386
+      },
+      "max_box_size": {
+        "mean": 19.18146479324787,
+        "std": 0.016980609432081722
+      },
+      "cross_class_overlap": {
+        "mean": 0.0,
+        "std": 0.0
+      },
+      "gnn_train_time": {
+        "mean": 0.7263303599999744,
+        "std": 0.03712247552829989
+      },
+      "fmnn_fit_time": {
+        "mean": 0.009940139999798703,
+        "std": 0.0015034888219363205
+      },
+      "refine_time": {
+        "mean": 0.0,
+        "std": 0.0
+      },
+      "pred_latency_per_node": {
+        "mean": 9.38639999994848e-06,
+        "std": 3.7761339389662463e-06
+      },
+      "peak_memory_mb": {
+        "mean": 7.846135520935059,
+        "std": 1.095720810668312
+      }
+    }
+  }
+}

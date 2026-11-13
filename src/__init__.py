@@ -1,1 +1,1 @@
-"""Research package for the GCN + FMNN + GSHR project."""
+"""GSHR: Graph-Structure-Aware Hyperbox Refinement for FMNN node classification."""

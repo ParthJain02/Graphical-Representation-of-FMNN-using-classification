@@ -1,13 +1,32 @@
+# Byte-compiled / optimized / DLL files
 __pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments & IDE
 .venv/
-.pytest_cache/
-*.pyc
-*.pyo
-*.egg-info/
+env/
+venv/
 .env/
-checkpoints/*
-results/raw/*
-results/processed/*
-logs/*.log
+.vscode/
+.idea/
+
+# Testing & caches
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# Raw datasets (keep directory structure only)
 data/*
 !data/.gitkeep
+
+# Local logs and temporary assignment archives
+logs/*.log
+temp_teammate_repo/
+assignment_submission/
+assignment_submission.zip
+AP24110010758_Week-7/
+prepare_assignment_submission.py
+results/processed/
+checkpoints/*

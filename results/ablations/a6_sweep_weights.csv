@@ -1,0 +1,6 @@
+setting,alpha,beta,delta,eta,num_boxes,test_accuracy,test_macro_f1
+Balanced (Default),0.35,0.35,0.2,0.1,8,0.783,0.7836437223066769
+Geometry-Heavy,0.55,0.15,0.2,0.1,8,0.783,0.7836437223066769
+Graph-Heavy,0.15,0.55,0.2,0.1,8,0.783,0.7836437223066769
+Consistency-Heavy,0.25,0.25,0.4,0.1,8,0.783,0.7836437223066769
+High-Risk-Penalty,0.3,0.3,0.15,0.25,8,0.783,0.7836437223066769

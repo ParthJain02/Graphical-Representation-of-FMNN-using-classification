@@ -1,16 +1,57 @@
-experiments:
-  - name: CiteSeer-E1
-    seed: 0
-    dataset_name: CiteSeer
-  - name: CiteSeer-E2
-    seed: 1
-    dataset_name: CiteSeer
-  - name: CiteSeer-E3
-    seed: 2
-    dataset_name: CiteSeer
-  - name: CiteSeer-E4
-    seed: 3
-    dataset_name: CiteSeer
-  - name: CiteSeer-E5
-    seed: 4
-    dataset_name: CiteSeer
+# Placeholder CiteSeer experiment config (to be filled in Steps 3-4).
+data:
+  name: CiteSeer
+  root: ./data
+  split: public
+
+gnn:
+  model: gcn
+  hidden: 64
+  out_dim: 64
+  layers: 2
+  dropout: 0.5
+  lr: 0.01
+  weight_decay: 0.0005
+  max_epochs: 500
+  patience: 50
+
+embed:
+  scale: minmax
+  clip: true
+
+fmnn:
+  theta: 0.3
+  gamma: 4.0
+
+merge:
+  alpha: 0.35
+  beta: 0.35
+  delta: 0.20
+  eta: 0.10
+  tau_merge: 0.5
+  knn_candidates: 10
+  max_volume_inflation: 0.5
+  use_graph_edges_for_candidates: true
+
+prune:
+  mu1: 0.25
+  mu2: 0.25
+  mu3: 0.20
+  mu4: 0.20
+  mu5: 0.10
+  tau_prune: 0.005
+  min_boxes_per_class: 1
+
+run:
+  seeds:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+  device: auto
+  output_dir: ./results
+
+safeguards:
+  class_purity: true
+  graph_association: true

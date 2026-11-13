@@ -1,0 +1,47 @@
+{
+  "dataset": "Chameleon",
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "selected": {
+    "use_best_encoder": false,
+    "use_l2_norm": false,
+    "use_fast_gshr": true,
+    "use_hybrid": true,
+    "use_pseudo": true
+  },
+  "gate_details": {
+    "encoder": {
+      "base_b1_val_f1_mean": 0.7141818390393013,
+      "v2_b1_val_f1_mean": 0.6512898409697035,
+      "base_b2_val_f1_mean": 0.6830353223346984,
+      "v2_b2_val_f1_mean": 0.6754230420351077,
+      "base_b2_boxes_mean": 29.0,
+      "v2_b2_boxes_mean": 112.4,
+      "kept": false
+    },
+    "fast_gshr": {
+      "before_val_f1_mean": 0.6830353223346984,
+      "after_val_f1_mean": 0.6997582035554434,
+      "before_boxes_mean": 29.0,
+      "after_boxes_mean": 12.6,
+      "kept": true
+    },
+    "hybrid": {
+      "before_val_f1_mean": 0.6997582035554434,
+      "after_val_f1_mean": 0.7141818390393013,
+      "kept": true
+    },
+    "pseudo": {
+      "before_val_f1_mean": 0.7141818390393013,
+      "after_val_f1_mean": 0.7141818390393013,
+      "before_boxes_mean": 12.6,
+      "after_boxes_mean": 10.6,
+      "kept": true
+    }
+  }
+}

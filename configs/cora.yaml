@@ -1,24 +1,56 @@
-seed: 42
-dataset:
+data:
   name: Cora
-  root: data
-  num_nodes: 20
-  num_features: 1433
-  num_classes: 7
-model:
-  hidden_dim: 64
+  root: ./data
+  split: public
+
+gnn:
+  model: gcn
+  hidden: 64
+  out_dim: 64
+  layers: 2
   dropout: 0.5
-  learning_rate: 0.01
+  lr: 0.01
   weight_decay: 0.0005
-  max_epochs: 200
-  patience: 30
+  max_epochs: 500
+  patience: 50
+
+embed:
+  scale: minmax
+  clip: true
+
 fmnn:
   theta: 0.3
-  gamma: 1.0
-refinement:
-  max_side_length: 1.0
-  volume_limit: 1000000
-  min_validation_purity: 0.2
-  min_objective_gain: 0.0
-  prune_rule:
-    max_loss_increase: 0.1
+  gamma: 4.0
+
+merge:
+  alpha: 0.35
+  beta: 0.35
+  delta: 0.20
+  eta: 0.10
+  tau_merge: 0.5
+  knn_candidates: 10
+  max_volume_inflation: 0.5
+  use_graph_edges_for_candidates: true
+
+prune:
+  mu1: 0.25
+  mu2: 0.25
+  mu3: 0.20
+  mu4: 0.20
+  mu5: 0.10
+  tau_prune: 0.005
+  min_boxes_per_class: 1
+
+run:
+  seeds:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+  device: auto
+  output_dir: ./results
+
+safeguards:
+  class_purity: true
+  graph_association: true

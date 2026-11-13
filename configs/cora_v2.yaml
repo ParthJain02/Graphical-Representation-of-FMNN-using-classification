@@ -1,0 +1,115 @@
+data:
+  name: Cora
+  root: ./data
+  split: public
+
+gnn:
+  model: gcn
+  hidden: 64
+  out_dim: 64
+  layers: 2
+  dropout: 0.5
+  lr: 0.01
+  weight_decay: 0.0005
+  max_epochs: 300
+  patience: 50
+  early_stop_metric: val_loss
+
+gnn_search:
+  enabled: true
+  search_seeds:
+    - 0
+    - 1
+    - 2
+  hidden:
+    - 64
+    - 128
+  dropout:
+    - 0.5
+    - 0.6
+  weight_decay:
+    - 0.0005
+    - 0.001
+  lr:
+    - 0.01
+    - 0.005
+
+embed:
+  scale: minmax
+  l2_norm: true
+  clip: true
+
+fmnn:
+  theta: 0.3
+  gamma: 4.0
+
+merge:
+  alpha: 0.35
+  beta: 0.35
+  delta: 0.20
+  eta: 0.10
+  tau_merge: 0.5
+  knn_candidates: 10
+  max_volume_inflation: 0.5
+  use_graph_edges_for_candidates: true
+
+prune:
+  mu1: 0.25
+  mu2: 0.25
+  mu3: 0.20
+  mu4: 0.20
+  mu5: 0.10
+  tau_prune: 0.005
+  min_boxes_per_class: 1
+
+run:
+  seeds:
+    - 0
+    - 1
+    - 2
+  device: auto
+  output_dir: ./results/v2
+
+safeguards:
+  class_purity: true
+  graph_association: true
+
+hybrid:
+  lambda_grid:
+    - 0.0
+    - 0.25
+    - 0.5
+    - 0.75
+    - 1.0
+  lambda: null
+  sanity_check: true
+
+pseudo:
+  enabled: true
+  c_grid:
+    - 0.8
+    - 0.9
+    - 0.95
+  c: null
+  exclude_val: false
+  exclude_test: false
+
+gshr_fast:
+  merge_enabled: true
+  require_same_class_overlap: true
+  theta_grid:
+    - 0.3
+    - 0.4
+    - 0.5
+    - 0.6
+  tau_prune_grid:
+    - 0.0
+    - 0.005
+    - 0.01
+    - 0.02
+  safeguards_grid:
+    - true
+    - false
+  theta: null
+  tau_prune: null
+  safeguards: null

@@ -1,147 +1,185 @@
+"""Data loading, preprocessing, and dataset utilities for graph benchmarks."""
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import numpy as np
-
-try:
-    from torch_geometric.datasets import Planetoid
-except Exception:  # pragma: no cover - fallback when PyG is unavailable
-    Planetoid = None
+import scipy.sparse as sp
+import torch
+from torch_geometric.datasets import Planetoid
+from torch_geometric.utils import coalesce, remove_self_loops, to_undirected
 
 
 @dataclass
-class DatasetBundle:
-    x: np.ndarray
-    y: np.ndarray
-    edge_index: np.ndarray
-    train_mask: np.ndarray
-    val_mask: np.ndarray
-    test_mask: np.ndarray
+class GraphData:
+    """Dataclass holding graph tensors and structural representations."""
+
+    name: str
+    x: torch.Tensor
+    edge_index: torch.Tensor
+    y: torch.Tensor
+    train_idx: torch.Tensor
+    val_idx: torch.Tensor
+    test_idx: torch.Tensor
     num_classes: int
-    metadata: dict[str, Any] = field(default_factory=dict)
+    num_nodes: int
+    adj_csr: sp.csr_matrix
+    degree: np.ndarray
 
 
-def validate_masks(
-    y: np.ndarray,
-    train_mask: np.ndarray,
-    val_mask: np.ndarray,
-    test_mask: np.ndarray,
-    require_exhaustive: bool = True,
-) -> None:
-    if len(y) != len(train_mask) or len(y) != len(val_mask) or len(y) != len(test_mask):
-        raise ValueError('Mask lengths must match the number of nodes.')
-    combined = train_mask | val_mask | test_mask
-    if require_exhaustive and not combined.all():
-        raise ValueError('Each node must belong to exactly one split mask.')
-    if np.any(train_mask & val_mask) or np.any(train_mask & test_mask) or np.any(val_mask & test_mask):
-        raise ValueError('Split masks must be disjoint.')
-    if y.shape[0] == 0:
-        raise ValueError('Dataset cannot be empty.')
+def homophily_ratio(data: GraphData) -> float:
+    """Calculate edge homophily ratio using all ground-truth labels.
+
+    WARNING:
+    This function uses ground-truth labels across the entire graph and is strictly
+    for offline dataset description and reporting. It must NEVER be called or used
+    inside the GSHR method, model training, validation selection, merging, or pruning stages,
+    as that would cause label leakage.
+    """
+    if data.edge_index.size(1) == 0:
+        return 0.0
+
+    src = data.edge_index[0]
+    dst = data.edge_index[1]
+    y_src = data.y[src]
+    y_dst = data.y[dst]
+    same_label_count = (y_src == y_dst).sum().item()
+    return float(same_label_count / data.edge_index.size(1))
 
 
-def load_planetoid_dataset(
-    dataset_name: str,
-    root: str | Path = 'data',
-    split: str = 'public',
-) -> DatasetBundle:
-    if Planetoid is None:
-        raise RuntimeError('torch_geometric is required to load real Planetoid datasets.')
-    canonical_name = {'cora': 'Cora', 'citeseer': 'CiteSeer', 'pubmed': 'PubMed'}[dataset_name.lower()]
-    dataset = Planetoid(root=str(root), name=canonical_name, split=split)
-    data = dataset[0]
-    x = np.asarray(data.x.numpy(), dtype=np.float32)
-    y = np.asarray(data.y.numpy(), dtype=np.int64)
-    edge_index = np.asarray(data.edge_index.numpy(), dtype=np.int64)
-    train_mask = np.asarray(data.train_mask.numpy(), dtype=bool)
-    val_mask = np.asarray(data.val_mask.numpy(), dtype=bool)
-    test_mask = np.asarray(data.test_mask.numpy(), dtype=bool)
-    validate_masks(y, train_mask, val_mask, test_mask, require_exhaustive=False)
-    return DatasetBundle(
-        x=x,
-        y=y,
-        edge_index=edge_index,
-        train_mask=train_mask,
-        val_mask=val_mask,
-        test_mask=test_mask,
-        num_classes=int(data.y.max().item()) + 1,
-        metadata={
-            'split': split,
-            'dataset': canonical_name,
-            'source': 'Planetoid',
-            'num_nodes': int(x.shape[0]),
-            'num_features': int(x.shape[1]),
-            'num_classes': int(data.y.max().item()) + 1,
-        },
+def load_dataset(name: str = "Cora", root: str = "./data") -> GraphData:
+    """Load graph dataset using standard benchmarks and convert to GraphData.
+
+    Args:
+        name: Name of the benchmark dataset (e.g., 'Cora', 'CiteSeer', 'PubMed').
+        root: Root directory for downloading and caching datasets.
+
+    Returns:
+        GraphData container with processed tensors, indices, and CSR adjacency.
+    """
+    name_clean = name.strip()
+    name_lower = name_clean.lower()
+
+    if name_lower in ["cora", "citeseer", "pubmed"]:
+        standard_name = "Cora" if name_lower == "cora" else ("CiteSeer" if name_lower == "citeseer" else "PubMed")
+        dataset = Planetoid(root=root, name=standard_name, split="public")
+        pyg_data = dataset[0]
+
+        # Extract node features, labels, and indices
+        x = pyg_data.x.float()
+        y = pyg_data.y.long().view(-1)
+        num_nodes = int(x.size(0))
+        num_classes = int(dataset.num_classes)
+
+        train_idx = torch.nonzero(pyg_data.train_mask, as_tuple=False).view(-1).long()
+        val_idx = torch.nonzero(pyg_data.val_mask, as_tuple=False).view(-1).long()
+        test_idx = torch.nonzero(pyg_data.test_mask, as_tuple=False).view(-1).long()
+
+        # Clean edge_index: remove self loops, ensure undirected, coalesce duplicates
+        edge_index = pyg_data.edge_index
+        edge_index, _ = remove_self_loops(edge_index)
+        edge_index = to_undirected(edge_index, num_nodes=num_nodes)
+        edge_index = coalesce(edge_index, num_nodes=num_nodes)
+
+        # Build SciPy CSR adjacency matrix (symmetric, binary, no self loops)
+        row = edge_index[0].cpu().numpy()
+        col = edge_index[1].cpu().numpy()
+        data_vals = np.ones(len(row), dtype=np.float32)
+        adj_coo = sp.coo_matrix((data_vals, (row, col)), shape=(num_nodes, num_nodes), dtype=np.float32)
+        adj_csr = adj_coo.tocsr()
+        adj_csr.setdiag(0.0)
+        adj_csr.eliminate_zeros()
+        adj_csr.data = np.ones_like(adj_csr.data, dtype=np.float32)
+
+        # Degree array as 1D numpy array
+        degree = np.array(adj_csr.sum(axis=1), dtype=np.int64).flatten()
+
+        return GraphData(
+            name=standard_name,
+            x=x,
+            edge_index=edge_index,
+            y=y,
+            train_idx=train_idx,
+            val_idx=val_idx,
+            test_idx=test_idx,
+            num_classes=num_classes,
+            num_nodes=num_nodes,
+            adj_csr=adj_csr,
+            degree=degree,
+        )
+
+    elif name_lower == "chameleon":
+        from torch_geometric.datasets import WikipediaNetwork
+        dataset = WikipediaNetwork(root=root, name="chameleon", geom_gcn_preprocess=True)
+        pyg_data = dataset[0]
+
+        x = pyg_data.x.float()
+        y = pyg_data.y.long().view(-1)
+        num_nodes = int(x.size(0))
+        num_classes = int(y.max().item()) + 1
+
+        # Use first fixed split (split 0) from geom-gcn
+        train_mask = pyg_data.train_mask[:, 0] if pyg_data.train_mask.dim() > 1 else pyg_data.train_mask
+        val_mask = pyg_data.val_mask[:, 0] if pyg_data.val_mask.dim() > 1 else pyg_data.val_mask
+        test_mask = pyg_data.test_mask[:, 0] if pyg_data.test_mask.dim() > 1 else pyg_data.test_mask
+
+        train_idx = torch.nonzero(train_mask, as_tuple=False).view(-1).long()
+        val_idx = torch.nonzero(val_mask, as_tuple=False).view(-1).long()
+        test_idx = torch.nonzero(test_mask, as_tuple=False).view(-1).long()
+
+        edge_index = pyg_data.edge_index
+        edge_index, _ = remove_self_loops(edge_index)
+        edge_index = to_undirected(edge_index, num_nodes=num_nodes)
+        edge_index = coalesce(edge_index, num_nodes=num_nodes)
+
+        row = edge_index[0].cpu().numpy()
+        col = edge_index[1].cpu().numpy()
+        data_vals = np.ones(len(row), dtype=np.float32)
+        adj_coo = sp.coo_matrix((data_vals, (row, col)), shape=(num_nodes, num_nodes), dtype=np.float32)
+        adj_csr = adj_coo.tocsr()
+        adj_csr.setdiag(0.0)
+        adj_csr.eliminate_zeros()
+        adj_csr.data = np.ones_like(adj_csr.data, dtype=np.float32)
+
+        degree = np.array(adj_csr.sum(axis=1), dtype=np.int64).flatten()
+
+        return GraphData(
+            name="Chameleon",
+            x=x,
+            edge_index=edge_index,
+            y=y,
+            train_idx=train_idx,
+            val_idx=val_idx,
+            test_idx=test_idx,
+            num_classes=num_classes,
+            num_nodes=num_nodes,
+            adj_csr=adj_csr,
+            degree=degree,
+        )
+
+    raise NotImplementedError(
+        f"Dataset '{name}' is not supported yet in Part 1. "
+        "Planetoid datasets 'Cora', 'CiteSeer', and 'PubMed' with public splits are currently supported."
     )
 
 
-def load_dataset(
-    dataset_name: str = 'synthetic-cora',
-    root: str | Path = 'data',
-    num_nodes: int = 20,
-    num_features: int = 8,
-    num_classes: int = 4,
-    seed: int = 0,
-    split: str = 'public',
-) -> DatasetBundle:
-    name = str(dataset_name).lower()
-    if name in {'cora', 'citeseer', 'pubmed'}:
-        return load_planetoid_dataset(name, root=root, split=split)
-    if name in {'synthetic-cora', 'synthetic'}:
-        return load_cora_like_dataset(num_nodes=num_nodes, num_features=num_features, num_classes=num_classes, seed=seed)
-    raise ValueError(f'Unsupported dataset name: {dataset_name}')
+def print_dataset_summary(data: GraphData) -> None:
+    """Print an informative summary of the loaded graph dataset."""
+    homophily = homophily_ratio(data)
+    num_edges_undirected = data.edge_index.size(1) // 2
 
-
-def load_cora_like_dataset(
-    num_nodes: int = 20,
-    num_features: int = 8,
-    num_classes: int = 4,
-    seed: int = 0,
-) -> DatasetBundle:
-    rng = np.random.default_rng(seed)
-    x = rng.normal(size=(num_nodes, num_features))
-    x = (x - x.min(axis=0)) / np.maximum((x.max(axis=0) - x.min(axis=0)), 1e-8)
-    y = rng.integers(0, num_classes, size=num_nodes)
-
-    edge_index: list[list[int]] = []
-    for i in range(num_nodes):
-        for j in range(num_nodes):
-            if i == j:
-                continue
-            if rng.random() < 0.08:
-                edge_index.append([i, j])
-    if len(edge_index) == 0:
-        edge_index = [[0, 1], [1, 0], [2, 3], [3, 2]]
-    edge_index = np.asarray(edge_index, dtype=np.int64).T
-
-    train_mask = np.zeros(num_nodes, dtype=bool)
-    val_mask = np.zeros(num_nodes, dtype=bool)
-    test_mask = np.zeros(num_nodes, dtype=bool)
-
-    idx = np.arange(num_nodes)
-    rng.shuffle(idx)
-    train_size = max(1, num_nodes // 3)
-    val_size = max(1, num_nodes // 5)
-    train_idx = idx[:train_size]
-    val_idx = idx[train_size:train_size + val_size]
-    test_idx = idx[train_size + val_size:]
-    if len(test_idx) == 0:
-        test_idx = np.array([num_nodes - 1], dtype=int)
-    train_mask[train_idx] = True
-    val_mask[val_idx] = True
-    test_mask[test_idx] = True
-
-    validate_masks(y, train_mask, val_mask, test_mask)
-    return DatasetBundle(
-        x=x,
-        y=y,
-        edge_index=edge_index,
-        train_mask=train_mask,
-        val_mask=val_mask,
-        test_mask=test_mask,
-        num_classes=num_classes,
-        metadata={'split': 'synthetic', 'seed': seed},
-    )
+    print("=" * 60)
+    print(f"Dataset Summary: {data.name}")
+    print("=" * 60)
+    print(f"  Nodes:              {data.num_nodes}")
+    print(f"  Features:           {data.x.size(1)}")
+    print(f"  Classes:            {data.num_classes}")
+    print(f"  Edges (undirected): {num_edges_undirected} (directed entries: {data.edge_index.size(1)})")
+    print(f"  Train nodes:        {len(data.train_idx)}")
+    print(f"  Val nodes:          {len(data.val_idx)}")
+    print(f"  Test nodes:         {len(data.test_idx)}")
+    print(f"  Homophily ratio:    {homophily:.4f}")
+    print("=" * 60)

@@ -1,0 +1,47 @@
+{
+  "dataset": "Cora",
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "selected": {
+    "use_best_encoder": true,
+    "use_l2_norm": true,
+    "use_fast_gshr": true,
+    "use_hybrid": true,
+    "use_pseudo": true
+  },
+  "gate_details": {
+    "encoder": {
+      "base_b1_val_f1_mean": 0.7821214574337513,
+      "v2_b1_val_f1_mean": 0.7794728489098833,
+      "base_b2_val_f1_mean": 0.7556799098585045,
+      "v2_b2_val_f1_mean": 0.7713086038344387,
+      "base_b2_boxes_mean": 13.6,
+      "v2_b2_boxes_mean": 12.8,
+      "kept": true
+    },
+    "fast_gshr": {
+      "before_val_f1_mean": 0.7713086038344387,
+      "after_val_f1_mean": 0.7799872932301387,
+      "before_boxes_mean": 12.8,
+      "after_boxes_mean": 7.2,
+      "kept": true
+    },
+    "hybrid": {
+      "before_val_f1_mean": 0.7799872932301387,
+      "after_val_f1_mean": 0.785517517753836,
+      "kept": true
+    },
+    "pseudo": {
+      "before_val_f1_mean": 0.785517517753836,
+      "after_val_f1_mean": 0.795005466709307,
+      "before_boxes_mean": 7.2,
+      "after_boxes_mean": 10.4,
+      "kept": true
+    }
+  }
+}

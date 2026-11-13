@@ -1,0 +1,105 @@
+{
+  "dataset": "Cora",
+  "rows": [
+    {
+      "dataset": "Cora",
+      "encoder": "gcn",
+      "is_val_best": false,
+      "val_acc_mean": 0.796,
+      "val_acc_std": 0.00979795897113272,
+      "val_macro_f1_mean": 0.7849541763744552,
+      "val_macro_f1_std": 0.009346075624588657,
+      "test_acc_mean": 0.8080000000000002,
+      "test_acc_std": 0.006036923425424917,
+      "test_macro_f1_mean": 0.8014179591964739,
+      "test_macro_f1_std": 0.005359943543224433,
+      "best_config": {
+        "model": "gcn",
+        "hidden": 128,
+        "out_dim": 64,
+        "layers": 2,
+        "dropout": 0.6,
+        "lr": 0.005,
+        "weight_decay": 0.0005,
+        "max_epochs": 200,
+        "patience": 40,
+        "early_stop_metric": "val_macro_f1"
+      }
+    },
+    {
+      "dataset": "Cora",
+      "encoder": "sage",
+      "is_val_best": false,
+      "val_acc_mean": 0.7819999999999999,
+      "val_acc_std": 0.013333333333333346,
+      "val_macro_f1_mean": 0.7774896161632535,
+      "val_macro_f1_std": 0.011884641623389959,
+      "test_acc_mean": 0.7929999999999999,
+      "test_acc_std": 0.015187714333192704,
+      "test_macro_f1_mean": 0.7861398179641816,
+      "test_macro_f1_std": 0.013380567028768796,
+      "best_config": {
+        "model": "sage",
+        "hidden": 128,
+        "out_dim": 64,
+        "layers": 2,
+        "dropout": 0.5,
+        "lr": 0.01,
+        "weight_decay": 5e-06,
+        "max_epochs": 200,
+        "patience": 40,
+        "early_stop_metric": "val_macro_f1"
+      }
+    },
+    {
+      "dataset": "Cora",
+      "encoder": "appnp",
+      "is_val_best": true,
+      "val_acc_mean": 0.8166,
+      "val_acc_std": 0.01490861048745541,
+      "val_macro_f1_mean": 0.807513346135743,
+      "val_macro_f1_std": 0.011546899557479288,
+      "test_acc_mean": 0.8214,
+      "test_acc_std": 0.012997435644515921,
+      "test_macro_f1_mean": 0.8137593637850286,
+      "test_macro_f1_std": 0.009605313099401842,
+      "best_config": {
+        "model": "appnp",
+        "hidden": 64,
+        "out_dim": 64,
+        "layers": 2,
+        "dropout": 0.5,
+        "lr": 0.01,
+        "weight_decay": 0.0005,
+        "max_epochs": 200,
+        "patience": 40,
+        "early_stop_metric": "val_macro_f1"
+      }
+    },
+    {
+      "dataset": "Cora",
+      "encoder": "gcnii",
+      "is_val_best": false,
+      "val_acc_mean": 0.8008,
+      "val_acc_std": 0.011669523459755214,
+      "val_macro_f1_mean": 0.7915254978321735,
+      "val_macro_f1_std": 0.010456720545057425,
+      "test_acc_mean": 0.8051,
+      "test_acc_std": 0.007475143997126559,
+      "test_macro_f1_mean": 0.7996594824175748,
+      "test_macro_f1_std": 0.0063342780528862965,
+      "best_config": {
+        "model": "gcnii",
+        "hidden": 64,
+        "out_dim": 64,
+        "layers": 2,
+        "dropout": 0.5,
+        "lr": 0.005,
+        "weight_decay": 0.0005,
+        "max_epochs": 200,
+        "patience": 40,
+        "early_stop_metric": "val_macro_f1"
+      }
+    }
+  ]
+}

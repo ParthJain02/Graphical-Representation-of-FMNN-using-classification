@@ -1,0 +1,64 @@
+{
+  "dataset": "CiteSeer",
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "encoder_model": "gcnii",
+  "selected": {
+    "use_l2_norm": true,
+    "use_ensemble": true,
+    "ensemble_embed_mode": "avg",
+    "use_fast_gshr": true,
+    "use_capped_pseudo": false,
+    "hybrid_mode": "global_lam",
+    "use_smoothing": false
+  },
+  "gate_details": {
+    "l2_norm": {
+      "f1_nol2": 0.6470159856610501,
+      "bx_nol2": 12.0,
+      "f1_l2": 0.6552005572794107,
+      "bx_l2": 15.333333333333334,
+      "kept": true
+    },
+    "ensemble": {
+      "single_hyb_f1": 0.6930594986163294,
+      "avg": {
+        "val_macro_f1": 0.6938184716185143,
+        "boxes": 15.0
+      },
+      "concat": {
+        "val_macro_f1": 0.6938184716185143,
+        "boxes": 15.0
+      },
+      "kept": true
+    },
+    "fast_gshr": {
+      "raw_f1": 0.6600268059158981,
+      "raw_bx": 15.0,
+      "fg_f1": 0.6807240823132124,
+      "fg_bx": 8.0,
+      "kept": true
+    },
+    "capped_pseudo": {
+      "no_pseudo_f1": 0.6938184716185143,
+      "no_pseudo_bx": 8.0,
+      "pseudo_f1": 0.6938184716185143,
+      "pseudo_bx": 8.0,
+      "kept": false
+    },
+    "hybrid_mode": {
+      "none": 0.6807240823132124,
+      "gated": 0.6910134087400825,
+      "global_lam": 0.6938184716185143,
+      "chosen": "global_lam"
+    },
+    "smoothing": {
+      "before_val_f1": 0.6938184716185143,
+      "after_val_f1": 0.6938184716185143,
+      "kept": false
+    }
+  }
+}

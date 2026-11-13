@@ -1,0 +1,47 @@
+{
+  "dataset": "CiteSeer",
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "selected": {
+    "use_best_encoder": true,
+    "use_l2_norm": true,
+    "use_fast_gshr": true,
+    "use_hybrid": true,
+    "use_pseudo": true
+  },
+  "gate_details": {
+    "encoder": {
+      "base_b1_val_f1_mean": 0.661320555098452,
+      "v2_b1_val_f1_mean": 0.6495760170145742,
+      "base_b2_val_f1_mean": 0.6305563367407219,
+      "v2_b2_val_f1_mean": 0.6411965538766092,
+      "base_b2_boxes_mean": 12.8,
+      "v2_b2_boxes_mean": 13.4,
+      "kept": true
+    },
+    "fast_gshr": {
+      "before_val_f1_mean": 0.6411965538766092,
+      "after_val_f1_mean": 0.6536776776158578,
+      "before_boxes_mean": 13.4,
+      "after_boxes_mean": 6.2,
+      "kept": true
+    },
+    "hybrid": {
+      "before_val_f1_mean": 0.6536776776158578,
+      "after_val_f1_mean": 0.6543028592483273,
+      "kept": true
+    },
+    "pseudo": {
+      "before_val_f1_mean": 0.6543028592483273,
+      "after_val_f1_mean": 0.6642693731180257,
+      "before_boxes_mean": 6.2,
+      "after_boxes_mean": 8.8,
+      "kept": true
+    }
+  }
+}

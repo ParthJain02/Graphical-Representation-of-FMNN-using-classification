@@ -1,0 +1,7 @@
+seed,setting,test_accuracy,test_macro_f1,num_boxes,cross_class_overlaps
+0,Safeguards_ON (Default),0.777,0.7718868088003769,7,0
+0,Safeguards_OFF (Aggressive),0.783,0.7836437223066769,8,0
+1,Safeguards_ON (Default),0.767,0.7671628305630226,7,0
+1,Safeguards_OFF (Aggressive),0.767,0.7671628305630226,7,0
+2,Safeguards_ON (Default),0.772,0.7781094898943203,7,0
+2,Safeguards_OFF (Aggressive),0.778,0.7830047783112422,8,0
