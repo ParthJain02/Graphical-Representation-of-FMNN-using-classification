@@ -1,0 +1,214 @@
+{
+  "dataset": "Cora",
+  "tag": "optimized",
+  "seeds": [
+    0
+  ],
+  "config": {
+    "data": {
+      "name": "Cora",
+      "root": "./data",
+      "split": "public"
+    },
+    "gnn": {
+      "model": "gcn",
+      "hidden": 128,
+      "out_dim": 64,
+      "layers": 2,
+      "dropout": 0.5,
+      "lr": 0.01,
+      "weight_decay": 0.0005,
+      "max_epochs": 300,
+      "patience": 50,
+      "early_stop_metric": "val_loss"
+    },
+    "gnn_search": {
+      "enabled": true,
+      "search_seeds": [
+        0,
+        1,
+        2
+      ],
+      "hidden": [
+        64,
+        128
+      ],
+      "dropout": [
+        0.5,
+        0.6
+      ],
+      "weight_decay": [
+        0.0005,
+        0.001
+      ],
+      "lr": [
+        0.01,
+        0.005
+      ]
+    },
+    "embed": {
+      "scale": "minmax",
+      "l2_norm": true,
+      "clip": true
+    },
+    "fmnn": {
+      "theta": 0.3,
+      "gamma": 4.0
+    },
+    "merge": {
+      "alpha": 0.35,
+      "beta": 0.35,
+      "delta": 0.2,
+      "eta": 0.1,
+      "tau_merge": 0.5,
+      "knn_candidates": 10,
+      "max_volume_inflation": 0.5,
+      "use_graph_edges_for_candidates": true
+    },
+    "prune": {
+      "mu1": 0.25,
+      "mu2": 0.25,
+      "mu3": 0.2,
+      "mu4": 0.2,
+      "mu5": 0.1,
+      "tau_prune": 0.005,
+      "min_boxes_per_class": 1
+    },
+    "run": {
+      "seeds": [
+        0,
+        1,
+        2
+      ],
+      "device": "auto",
+      "output_dir": "./results/v2"
+    },
+    "safeguards": {
+      "class_purity": true,
+      "graph_association": true
+    },
+    "hybrid": {
+      "lambda_grid": [
+        0.0,
+        0.25,
+        0.5,
+        0.75,
+        1.0
+      ],
+      "lambda": null,
+      "sanity_check": true
+    },
+    "pseudo": {
+      "enabled": true,
+      "c_grid": [
+        0.8,
+        0.9,
+        0.95
+      ],
+      "c": null,
+      "exclude_val": false,
+      "exclude_test": false
+    },
+    "gshr_fast": {
+      "search": false,
+      "merge_enabled": true,
+      "require_same_class_overlap": true,
+      "theta": 0.3,
+      "tau_prune": 0.005,
+      "safeguards": true,
+      "theta_grid": [
+        0.3,
+        0.4,
+        0.5,
+        0.6
+      ],
+      "tau_prune_grid": [
+        0.0,
+        0.005,
+        0.01,
+        0.02
+      ],
+      "safeguards_grid": [
+        true,
+        false
+      ]
+    }
+  },
+  "summary": [
+    {
+      "variant": "B9_gshr_fast",
+      "num_seeds": 1,
+      "test_acc_mean": 0.792,
+      "test_acc_std": 0.0,
+      "test_f1_mean": 0.7876578694040973,
+      "test_f1_std": 0.0,
+      "boxes_mean": 8.0,
+      "mean_box_size_mean": 18.210832981870723,
+      "overlap_mean": 0.0,
+      "chosen_lams": [],
+      "chosen_lam_mean": null,
+      "chosen_cs": [],
+      "chosen_c_mean": null,
+      "pseudo_counts": [],
+      "pseudo_count_mean": null,
+      "box_coverage_mean": 0.086,
+      "covered_acc_mean": 0.9883720930232558,
+      "uncovered_acc_mean": 0.7735229759299781
+    }
+  ],
+  "runs": [
+    {
+      "dataset": "Cora",
+      "seed": 0,
+      "variant": "B9_gshr_fast",
+      "test_accuracy": 0.792,
+      "test_macro_f1": 0.7876578694040973,
+      "test_micro_f1": 0.792,
+      "test_per_class_recall": [
+        0.7538461538461538,
+        0.8461538461538461,
+        0.8888888888888888,
+        0.7178683385579937,
+        0.8322147651006712,
+        0.7961165048543689,
+        0.84375
+      ],
+      "val_accuracy": 0.776,
+      "val_macro_f1": 0.7727741172573693,
+      "num_boxes": 8,
+      "box_storage_bytes": 4096,
+      "mean_box_size": 18.210832981870723,
+      "max_box_size": 19.189190274719508,
+      "cross_class_overlap": 0,
+      "chosen_tau_merge": null,
+      "chosen_tau_prune": 0.005,
+      "chosen_theta": 0.3,
+      "chosen_safeguards": "on",
+      "best_setting": "th=0.3_tp=0.005_sg=on",
+      "best_setting_refine_time": 0.1223056999997425,
+      "settings_table": [
+        {
+          "setting": "th=0.3_tp=0.005_sg=on",
+          "theta": 0.3,
+          "tau_prune": 0.005,
+          "safeguards": "on",
+          "num_boxes": 8,
+          "val_accuracy": 0.776,
+          "val_macro_f1": 0.7727741172573693,
+          "refine_time": 0.1223056999997425,
+          "merge_executed": 0
+        }
+      ],
+      "box_coverage": 0.086,
+      "covered_count": 86,
+      "uncovered_count": 914,
+      "covered_accuracy": 0.9883720930232558,
+      "uncovered_accuracy": 0.7735229759299781,
+      "gnn_train_time": 5.548937900000055,
+      "fmnn_fit_time": 0.019134399999984453,
+      "refine_time": 0.18661159999965093,
+      "pred_latency_per_node": 1.8311400000129653e-05,
+      "peak_memory_mb": 9.092755317687988
+    }
+  ]
+}

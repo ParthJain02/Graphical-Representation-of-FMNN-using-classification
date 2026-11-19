@@ -1,0 +1,7 @@
+Experiment summary
+dataset: {'split': 'public', 'dataset': 'Cora', 'source': 'Planetoid', 'num_nodes': 2708}
+accuracy: 0.737
+macro_f1: 0.7265447072829562
+split_metrics: {'train': {'accuracy': 1.0, 'macro_f1': 1.0}, 'validation': {'accuracy': 0.752, 'macro_f1': 0.7373978492008533}, 'test': {'accuracy': 0.737, 'macro_f1': 0.7265447072829562}}
+num_hyperboxes: 103
+versions: {'python': '3.11.9', 'platform': 'Windows-10-10.0.26300-SP0', 'numpy': '2.4.6', 'scikit-learn': '1.9.1', 'pyyaml': '6.0.3', 'torch': '2.5.1+cpu'}

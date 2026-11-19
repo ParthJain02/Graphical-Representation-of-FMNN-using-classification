@@ -95,8 +95,13 @@ pseudo:
   exclude_test: false
 
 gshr_fast:
+  # Set search=true to run the full validation grid.
+  search: false
   merge_enabled: true
   require_same_class_overlap: true
+  theta: 0.3
+  tau_prune: 0.005
+  safeguards: true
   theta_grid:
     - 0.3
     - 0.4
@@ -110,6 +115,3 @@ gshr_fast:
   safeguards_grid:
     - true
     - false
-  theta: null
-  tau_prune: null
-  safeguards: null

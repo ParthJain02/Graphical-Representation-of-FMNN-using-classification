@@ -105,6 +105,26 @@ def _fast_confusion_metrics(
     return acc, macro_f1, recalls
 
 
+def _metrics_from_confusion_matrix(
+    cm: np.ndarray,
+    num_samples: int,
+    num_classes: int,
+) -> tuple[float, float, np.ndarray]:
+    """Compute validation metrics from an already-maintained confusion matrix."""
+    cm_float = np.asarray(cm, dtype=np.float64)
+    tp = np.diag(cm_float)
+    actual = cm_float.sum(axis=1)
+    pred_pos = cm_float.sum(axis=0)
+
+    acc = float(tp.sum() / max(1, num_samples))
+    recalls = np.where(actual > 0.0, tp / np.maximum(actual, 1.0), 0.0)
+    denom = actual + pred_pos
+    f1s = np.where(denom > 0.0, (2.0 * tp) / np.maximum(denom, 1.0), 0.0)
+    present = (actual > 0.0) | (pred_pos > 0.0)
+    macro_f1 = float(np.mean(f1s[present])) if np.any(present) else 0.0
+    return acc, macro_f1, recalls
+
+
 def _compute_importance_score(
     box: HyperBox,
     fmnn: FMNN,
@@ -280,24 +300,107 @@ def gshr_prune(
         if cols_c:
             base_scores[:, c] = np.max(val_mem_matrix[:, cols_c], axis=1)
 
-    def eval_without_box(drop_bid: int | None = None, drop_cls: int | None = None) -> tuple[float, float, np.ndarray, np.ndarray | None]:
+    current_preds = np.argmax(base_scores, axis=1)
+    current_cm = np.bincount(
+        y_val_int * num_classes + current_preds,
+        minlength=num_classes * num_classes,
+    ).reshape(num_classes, num_classes)
+
+    def eval_without_box(
+        drop_bid: int | None = None,
+        drop_cls: int | None = None,
+    ) -> tuple[
+        float,
+        float,
+        np.ndarray,
+        np.ndarray | None,
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+    ]:
         """Compute validation metrics when removing a single box without copying full matrices."""
         if drop_bid is None or drop_cls is None:
-            preds = np.argmax(base_scores, axis=1)
-            acc, macro_f1, recalls = _fast_confusion_metrics(y_val_int, preds, num_classes)
-            return acc, macro_f1, recalls, None
+            acc, macro_f1, recalls = _metrics_from_confusion_matrix(
+                current_cm,
+                num_val,
+                num_classes,
+            )
+            return (
+                acc,
+                macro_f1,
+                recalls,
+                None,
+                np.empty(0, dtype=np.int64),
+                np.empty(0, dtype=np.int64),
+                current_cm.copy(),
+            )
 
         drop_col = id_to_col[drop_bid]
         rem_cols = [col for col in active_cols_by_class[drop_cls] if col != drop_col]
-        new_col_scores = np.max(val_mem_matrix[:, rem_cols], axis=1) if rem_cols else np.zeros(num_val, dtype=np.float64)
-        trial_scores = base_scores.copy()
-        trial_scores[:, drop_cls] = new_col_scores
-        preds = np.argmax(trial_scores, axis=1)
-        acc, macro_f1, recalls = _fast_confusion_metrics(y_val_int, preds, num_classes)
-        return acc, macro_f1, recalls, new_col_scores
+        removed_scores = val_mem_matrix[:, drop_col]
+        affected = np.flatnonzero(removed_scores >= base_scores[:, drop_cls] - 1e-12)
+        if len(affected) == 0:
+            acc, macro_f1, recalls = _metrics_from_confusion_matrix(
+                current_cm,
+                num_val,
+                num_classes,
+            )
+            return (
+                acc,
+                macro_f1,
+                recalls,
+                None,
+                affected,
+                np.empty(0, dtype=np.int64),
+                current_cm.copy(),
+            )
+
+        new_cls_scores = (
+            np.max(val_mem_matrix[np.ix_(affected, rem_cols)], axis=1)
+            if rem_cols
+            else np.zeros(len(affected), dtype=np.float64)
+        )
+        trial_preds = current_preds[affected].copy()
+        trial_scores = base_scores[affected].copy()
+        trial_scores[:, drop_cls] = new_cls_scores
+        trial_preds = np.argmax(trial_scores, axis=1)
+
+        trial_cm = current_cm.copy()
+        old_keys = y_val_int[affected] * num_classes + current_preds[affected]
+        new_keys = y_val_int[affected] * num_classes + trial_preds
+        trial_cm -= np.bincount(
+            old_keys,
+            minlength=num_classes * num_classes,
+        ).reshape(num_classes, num_classes)
+        trial_cm += np.bincount(
+            new_keys,
+            minlength=num_classes * num_classes,
+        ).reshape(num_classes, num_classes)
+        acc, macro_f1, recalls = _metrics_from_confusion_matrix(
+            trial_cm,
+            num_val,
+            num_classes,
+        )
+        return (
+            acc,
+            macro_f1,
+            recalls,
+            new_cls_scores,
+            affected,
+            trial_preds,
+            trial_cm,
+        )
 
     active_box_ids: set[int] = set(new_fmnn.boxes.keys())
-    val_acc_init, val_macro_f1_init, val_recalls_init, _ = eval_without_box()
+    (
+        val_acc_init,
+        val_macro_f1_init,
+        val_recalls_init,
+        _,
+        _,
+        _,
+        _,
+    ) = eval_without_box()
 
     baseline_val_macro_f1 = val_macro_f1_init
     current_val_macro_f1 = val_macro_f1_init
@@ -383,7 +486,15 @@ def gshr_prune(
             continue
 
         # 3b. Fast temporary removal evaluation on validation split
-        temp_acc, temp_macro_f1, temp_recalls, new_cls_scores = eval_without_box(bid, c)
+        (
+            temp_acc,
+            temp_macro_f1,
+            temp_recalls,
+            new_cls_scores,
+            affected_rows,
+            trial_preds,
+            trial_cm,
+        ) = eval_without_box(bid, c)
 
         # 3c. Count member training nodes that lose their best same-class membership (membership < 1.0)
         lost_membership_count = 0
@@ -442,7 +553,10 @@ def gshr_prune(
             active_box_ids.remove(bid)
             active_cols_by_class[c].remove(id_to_col[bid])
             if new_cls_scores is not None:
-                base_scores[:, c] = new_cls_scores
+                base_scores[affected_rows, c] = new_cls_scores
+            if len(affected_rows) > 0:
+                current_preds[affected_rows] = trial_preds
+                current_cm = trial_cm
             pruned_count += 1
             visits.append({
                 "id": bid,

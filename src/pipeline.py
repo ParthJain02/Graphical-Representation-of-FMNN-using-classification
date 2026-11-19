@@ -896,9 +896,23 @@ def _select_fast_gshr(
     t0_total = time.perf_counter()
     start_fmnn = init_fmnn if init_fmnn is not None else seed_ctx.base_fmnn
     fast_cfg = cfg.get("gshr_fast", {})
-    theta_grid = [float(x) for x in fast_cfg.get("theta_grid", [0.3, 0.4, 0.5, 0.6])]
-    tau_prune_grid = [float(x) for x in fast_cfg.get("tau_prune_grid", [0.0, 0.005, 0.01, 0.02])]
-    safeguards_grid = [bool(x) for x in fast_cfg.get("safeguards_grid", [True, False])]
+    search_enabled = bool(fast_cfg.get("search", True))
+    if search_enabled:
+        theta_grid = [float(x) for x in fast_cfg.get("theta_grid", [0.3, 0.4, 0.5, 0.6])]
+        tau_prune_grid = [float(x) for x in fast_cfg.get("tau_prune_grid", [0.0, 0.005, 0.01, 0.02])]
+        safeguards_grid = [bool(x) for x in fast_cfg.get("safeguards_grid", [True, False])]
+    else:
+        safeguards = cfg.get("safeguards", {})
+        theta_grid = [float(fast_cfg.get("theta", cfg.get("fmnn", {}).get("theta", start_fmnn.theta)))]
+        tau_prune_grid = [float(fast_cfg.get("tau_prune", cfg.get("prune", {}).get("tau_prune", 0.005)))]
+        safeguards_grid = [
+            bool(
+                fast_cfg.get(
+                    "safeguards",
+                    bool(safeguards.get("class_purity", True) and safeguards.get("graph_association", True)),
+                )
+            )
+        ]
     if fast_cfg.get("theta") is not None:
         theta_grid = [float(fast_cfg["theta"])]
     if fast_cfg.get("tau_prune") is not None:
