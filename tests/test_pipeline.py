@@ -473,3 +473,56 @@ def test_b14_final_component_gating_no_test_leakage(synthetic_graph: GraphData, 
     assert res14["variant"] == "B14_final"
     assert res14["pred_latency_per_node"] > 0.0
     assert 0.0 <= res14["fraction_changed_by_boxes"] <= 1.0
+
+
+def test_refine_fast_vs_slow_equivalence(synthetic_graph: GraphData, fast_cfg: dict) -> None:
+    """Verify that refine.fast=true and refine.fast=false produce identical box sets on a seeded graph."""
+    cfg_fast = copy.deepcopy(fast_cfg)
+    cfg_fast["refine"] = {"fast": True}
+
+    cfg_slow = copy.deepcopy(fast_cfg)
+    cfg_slow["refine"] = {"fast": False}
+
+    seed = 0
+    seed_ctx = prepare_seed_context(cfg_fast, synthetic_graph, seed)
+
+    res_fast = run_single_seed(cfg_fast, synthetic_graph, seed, "B6", seed_ctx=seed_ctx)
+    res_slow = run_single_seed(cfg_slow, synthetic_graph, seed, "B6", seed_ctx=seed_ctx)
+
+    boxes_fast = sorted(
+        res_fast["model"].boxes.values(),
+        key=lambda b: (b.cls, tuple(b.v), tuple(b.w)),
+    )
+    boxes_slow = sorted(
+        res_slow["model"].boxes.values(),
+        key=lambda b: (b.cls, tuple(b.v), tuple(b.w)),
+    )
+
+    assert len(boxes_fast) == len(boxes_slow), (
+        f"Box count mismatch: fast={len(boxes_fast)} vs slow={len(boxes_slow)}"
+    )
+    for i, (b_f, b_s) in enumerate(zip(boxes_fast, boxes_slow)):
+        assert b_f.cls == b_s.cls, f"Box {i} class mismatch: {b_f.cls} != {b_s.cls}"
+        assert np.allclose(b_f.v, b_s.v, atol=1e-7), f"Box {i} lower corner v mismatch"
+        assert np.allclose(b_f.w, b_s.w, atol=1e-7), f"Box {i} upper corner w mismatch"
+
+    assert res_fast["num_boxes"] == res_slow["num_boxes"]
+    assert res_fast["num_boxes"] >= synthetic_graph.num_classes
+
+
+def test_fast_macro_f1_matches_sklearn_1000_cases() -> None:
+    """Verify NumPy confusion-matrix macro-F1 matches scikit-learn exactly across 1,000 random cases."""
+    from sklearn.metrics import f1_score
+    from src.metrics import fast_macro_f1
+
+    rng = np.random.default_rng(2026)
+    for _ in range(1000):
+        n = rng.integers(1, 200)
+        c = rng.integers(2, 20)
+        y_true = rng.integers(0, c, size=n)
+        y_pred = rng.integers(0, c, size=n)
+
+        sk_f1 = float(f1_score(y_true, y_pred, average="macro", zero_division=0))
+        fast_f1 = fast_macro_f1(y_true, y_pred, num_classes=c)
+
+        np.testing.assert_allclose(fast_f1, sk_f1, atol=1e-12)

@@ -17,9 +17,9 @@ venv/
 htmlcov/
 *.egg-info/
 
-# Raw datasets (keep directory structure only)
-data/*
-!data/.gitkeep
+# Datasets (tracked in repo)
+# data/ is included for full offline reproducibility
+
 
 # Local logs and temporary assignment archives
 logs/*.log

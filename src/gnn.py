@@ -13,6 +13,7 @@ from sklearn.metrics import f1_score
 from torch_geometric.nn import APPNP, GCN2Conv, GCNConv, SAGEConv
 
 from src.data import GraphData
+from src.metrics import fast_macro_f1
 from src.utils import get_device, set_seed
 
 
@@ -308,7 +309,7 @@ def train_gnn(
             val_preds = val_out[val_idx].argmax(dim=-1).cpu().numpy()
             val_targets = y[val_idx].cpu().numpy()
             val_acc = float((val_preds == val_targets).mean())
-            val_macro_f1 = float(f1_score(val_targets, val_preds, average="macro", zero_division=0))
+            val_macro_f1 = fast_macro_f1(val_targets, val_preds, num_classes=data.num_classes)
 
         history.append({
             "epoch": epoch,
@@ -357,7 +358,7 @@ def train_gnn(
         test_preds = test_out[test_idx].argmax(dim=-1).cpu().numpy()
         test_targets = y[test_idx].cpu().numpy()
         test_acc = float((test_preds == test_targets).mean())
-        test_macro_f1 = float(f1_score(test_targets, test_preds, average="macro", zero_division=0))
+        test_macro_f1 = fast_macro_f1(test_targets, test_preds, num_classes=data.num_classes)
 
     test_metrics: dict[str, float] = {
         **val_metrics,

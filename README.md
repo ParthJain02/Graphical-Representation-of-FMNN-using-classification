@@ -6,7 +6,7 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.14-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
 [![PyTorch 2.1+](https://img.shields.io/badge/PyTorch-2.1%2B%20%7C%20CPU%2FCUDA-ee4c2c.svg?logo=pytorch&logoColor=white)](https://pytorch.org/)
 [![PyG 2.8+](https://img.shields.io/badge/PyG-2.8%2B%20Geometric-3C2179.svg)](https://pyg.org/)
-[![Tests](https://img.shields.io/badge/tests-66%20passed-brightgreen.svg?logo=pytest&logoColor=white)](tests/)
+[![Tests](https://img.shields.io/badge/tests-77%20passed-brightgreen.svg?logo=pytest&logoColor=white)](tests/)
 [![Datasets](https://img.shields.io/badge/benchmarks-Cora%20%7C%20CiteSeer%20%7C%20Chameleon-orange.svg)](#-benchmark-results)
 [![Zero Leakage](https://img.shields.io/badge/protocol-100%25%20validation--isolated-success.svg)](#-scientific-integrity--anti-leakage-protocol)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)](LICENSE)
@@ -375,16 +375,18 @@ python make_report_md.py
 │   ├── prune.py                           # Validation macro-F1 sequential hyperbox pruner
 │   ├── pipeline.py                        # End-to-end B1-B14 pipelines & hybrid prediction
 │   └── metrics.py                         # Macro/micro F1, purity, unified latency timing
-├── tests/                                 # Unit & integration test suite (66 tests)
+├── data/                                  # Bundled datasets (Cora, CiteSeer, PubMed, Chameleon)
+├── tests/                                 # Unit & integration test suite (77 tests)
 │   ├── test_data.py / test_gnn.py         # Data splitting & encoder forward pass tests
 │   ├── test_fmnn.py / test_merge.py       # Simpson expansion, contraction, & merge tests
 │   ├── test_prune.py / test_pipeline.py   # Pruning safeguards & hybrid inference tests
 │   └── test_graph_stats.py                # Conductance & homophily verification
+├── PROJECT_COMPREHENSIVE_GUIDE.md         # Master academic & engineering guide (B1-B14 taxonomy & viva Q&A)
+├── Final_Research_Report.pdf              # Official compiled publication report (308 KB)
 ├── standalone_fmnn.py                     # Standalone educational visual demo script
 ├── make_report_md.py                      # Automated generator for REPORT.md from results/
 ├── REPORT.md                              # Comprehensive final research report (282 KB)
-├── RESEARCH_REPORT.md                     # Legacy E1-E8 research report
-├── RESEARCH_NOTES.md                      # Literature review & citation notes
+├── RESEARCH_REPORT.md                     # Research notes & findings
 ├── requirements.txt                       # Environment dependencies
 └── pytest.ini                             # Pytest execution configuration
 ```

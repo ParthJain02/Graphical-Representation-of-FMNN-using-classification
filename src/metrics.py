@@ -15,6 +15,52 @@ from src.embeddings import l2_normalize_embeddings
 from src.fmnn import FMNN
 
 
+def fast_macro_f1(
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
+    num_classes: int | None = None,
+) -> float:
+    """Fast macro-averaged F1 score matching sklearn with zero_division=0.
+
+    Computes F1 score averaged over the union of classes present in y_true and y_pred.
+
+    Args:
+        y_true: Ground-truth class labels.
+        y_pred: Predicted class labels.
+        num_classes: Optional total number of classes.
+
+    Returns:
+        Macro-averaged F1 score as float.
+    """
+    if hasattr(y_true, "cpu"):
+        y_true = y_true.cpu().numpy()
+    if hasattr(y_pred, "cpu"):
+        y_pred = y_pred.cpu().numpy()
+
+    y_true_arr = np.asarray(y_true, dtype=np.int64)
+    y_pred_arr = np.asarray(y_pred, dtype=np.int64)
+    if len(y_true_arr) == 0:
+        return 0.0
+
+    max_label = max(int(np.max(y_true_arr)), int(np.max(y_pred_arr)))
+    if max_label < 0:
+        return 0.0
+    k = max_label + 1
+    if num_classes is not None and num_classes > k:
+        k = num_classes
+
+    cm = np.bincount(y_true_arr * k + y_pred_arr, minlength=k * k).reshape(k, k)
+    tp = np.diag(cm)
+    true_count = cm.sum(axis=1)
+    pred_count = cm.sum(axis=0)
+    denom = true_count + pred_count
+    present = denom > 0
+    if not np.any(present):
+        return 0.0
+    f1_present = (2.0 * tp[present]) / denom[present]
+    return float(np.mean(f1_present))
+
+
 def classification_metrics(
     y_true: np.ndarray,
     y_pred: np.ndarray,
@@ -34,7 +80,7 @@ def classification_metrics(
     y_pred_np = np.asarray(y_pred, dtype=np.int64)
 
     acc = float((y_true_np == y_pred_np).mean()) if len(y_true_np) > 0 else 0.0
-    macro_f1 = float(f1_score(y_true_np, y_pred_np, average="macro", zero_division=0))
+    macro_f1 = fast_macro_f1(y_true_np, y_pred_np, num_classes=num_classes)
     micro_f1 = float(f1_score(y_true_np, y_pred_np, average="micro", zero_division=0))
 
     class_labels = list(range(num_classes))

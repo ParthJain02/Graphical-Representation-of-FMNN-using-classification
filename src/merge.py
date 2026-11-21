@@ -106,6 +106,10 @@ def _evaluate_candidate_pair(
     theta: float,
     class_purity_safeguard: bool,
     rejections: dict[str, int],
+    fast: bool = True,
+    box_edges: dict[tuple[int, int], int] | None = None,
+    vol_dict: dict[int, int] | None = None,
+    label_counts: dict[int, dict[int, int]] | None = None,
 ) -> tuple[bool, float, dict[str, float] | None, str]:
     """Evaluate whether two same-class hyperboxes can merge.
 
@@ -123,63 +127,137 @@ def _evaluate_candidate_pair(
     merged_members = list(set(box_i.members + box_j.members))
     merged_box = HyperBox(id=-1, v=v_merged, w=w_merged, cls=c, members=merged_members)
 
-    # 1. Hard Rule: Side lengths / Expansion limit (Simpson criterion)
-    size_merged = np.sum(w_merged - v_merged)
+    if not fast:
+        # Legacy behavior: check overlap and purity before score
+        size_merged = float(np.sum(w_merged - v_merged))
+        if size_merged > n_dims * theta:
+            rejections["size_limit"] += 1
+            return False, 0.0, None, "size_limit"
+
+        other_boxes = [b for b in fmnn.boxes.values() if b.cls != c]
+        for b_other in other_boxes:
+            if fmnn.boxes_overlap(merged_box, b_other):
+                rejections["cross_class_overlap"] += 1
+                return False, 0.0, None, "cross_class_overlap"
+
+        size_i = fmnn.box_volume_proxy(box_i)
+        size_j = fmnn.box_volume_proxy(box_j)
+        inflation = max(0.0, size_merged - size_i - size_j) / (size_merged + 1e-12)
+        inflation = float(np.clip(inflation, 0.0, 1.0))
+        if inflation > max_volume_inflation:
+            rejections["volume_inflation"] += 1
+            return False, 0.0, None, "volume_inflation"
+
+        purity = class_purity(merged_members, c, ctx.y, ctx.train_mask)
+        if class_purity_safeguard and purity < 1.0:
+            rejections["class_purity"] += 1
+            return False, 0.0, None, "class_purity"
+
+        center_dist = float(np.linalg.norm(fmnn.center(box_i) - fmnn.center(box_j)))
+        max_dist = np.sqrt(n_dims)
+        geometry = float(np.clip(1.0 - (center_dist / (max_dist + 1e-12)), 0.0, 1.0))
+
+        if beta > 0.0:
+            graph_assoc = graph_association(box_i.members, box_j.members, ctx.adj_csr, ctx.degree)
+        else:
+            graph_assoc = 0.0
+        graph_assoc = float(np.clip(graph_assoc, 0.0, 1.0))
+        class_cons = float(np.clip(purity, 0.0, 1.0))
+
+        agr, _ = neighbor_label_agreement(merged_members, c, ctx.adj_csr, ctx.y, ctx.train_mask)
+        conflict = float(np.clip(1.0 - agr, 0.0, 1.0))
+        risk = float(np.clip((inflation + conflict) / 3.0, 0.0, 1.0))
+
+        M = float(alpha * geometry + beta * graph_assoc + delta * class_cons - eta * risk)
+        if M < tau_merge:
+            rejections["threshold"] += 1
+            return False, M, None, "threshold"
+
+        components = {
+            "geometry": geometry,
+            "graph": graph_assoc,
+            "consistency": class_cons,
+            "risk": risk,
+        }
+        return True, M, components, "accepted"
+
+    # --- FAST OPTIMIZED MERGE PATH ---
+    # 1. Cheap Hard Check: class and theta (Simpson expansion limit)
+    size_merged = float(np.sum(w_merged - v_merged))
     if size_merged > n_dims * theta:
         rejections["size_limit"] += 1
         return False, 0.0, None, "size_limit"
 
-    # 2. Hard Rule: Strict cross-class overlap
+    # Volume inflation calculation (sum of side lengths, not product)
+    size_i = float(np.sum(box_i.w - box_i.v))
+    size_j = float(np.sum(box_j.w - box_j.v))
+    inflation = max(0.0, size_merged - size_i - size_j) / (size_merged + 1e-12)
+    inflation = float(np.clip(inflation, 0.0, 1.0))
+
+    # Class purity from cached label counts
+    if class_purity_safeguard:
+        if label_counts is not None:
+            counts_i = label_counts.get(box_i.id, {})
+            counts_j = label_counts.get(box_j.id, {})
+            impure = any(lbl != c for lbl in counts_i) or any(lbl != c for lbl in counts_j)
+            if impure:
+                rejections["class_purity"] += 1
+                return False, 0.0, None, "class_purity"
+        else:
+            purity = class_purity(merged_members, c, ctx.y, ctx.train_mask)
+            if purity < 1.0:
+                rejections["class_purity"] += 1
+                return False, 0.0, None, "class_purity"
+
+    # 2. Score Computation: Cheap terms before expensive cross-class overlap
+    center_i = (box_i.v + box_i.w) * 0.5
+    center_j = (box_j.v + box_j.w) * 0.5
+    center_dist = float(np.linalg.norm(center_i - center_j))
+    max_dist = np.sqrt(n_dims)
+    geometry = float(np.clip(1.0 - (center_dist / (max_dist + 1e-12)), 0.0, 1.0))
+
+    if beta > 0.0:
+        if box_edges is not None and vol_dict is not None:
+            pair_key = (min(box_i.id, box_j.id), max(box_i.id, box_j.id))
+            e_ij = box_edges.get(pair_key, 0)
+            vol_i = vol_dict.get(box_i.id, 0)
+            vol_j = vol_dict.get(box_j.id, 0)
+            denom = np.sqrt(float(vol_i * vol_j) + 1e-12)
+            graph_assoc = float(np.clip(e_ij / denom, 0.0, 1.0))
+        else:
+            graph_assoc = graph_association(box_i.members, box_j.members, ctx.adj_csr, ctx.degree)
+    else:
+        graph_assoc = 0.0
+    graph_assoc = float(np.clip(graph_assoc, 0.0, 1.0))
+
+    # Neighbor agreement and risk
+    agr, _ = neighbor_label_agreement(merged_members, c, ctx.adj_csr, ctx.y, ctx.train_mask)
+    conflict = float(np.clip(1.0 - agr, 0.0, 1.0))
+    risk = float(np.clip((inflation + conflict) / 3.0, 0.0, 1.0))
+
+    # Remove constant ClassConsistency term (purity is 1.0 across all pure same-class boxes)
+    M = float(alpha * geometry + beta * graph_assoc - eta * risk)
+
+    if M < tau_merge:
+        rejections["threshold"] += 1
+        return False, M, None, "threshold"
+
+    # 3. Run Cross-Class Overlap Check ONLY for candidates above tau_merge
     other_boxes = [b for b in fmnn.boxes.values() if b.cls != c]
     for b_other in other_boxes:
         if fmnn.boxes_overlap(merged_box, b_other):
             rejections["cross_class_overlap"] += 1
             return False, 0.0, None, "cross_class_overlap"
 
-    # 3. Hard Rule: Volume inflation
-    size_i = fmnn.box_volume_proxy(box_i)
-    size_j = fmnn.box_volume_proxy(box_j)
-    inflation = max(0.0, size_merged - size_i - size_j) / (size_merged + 1e-12)
-    inflation = float(np.clip(inflation, 0.0, 1.0))
+    # 4. Volume inflation check
     if inflation > max_volume_inflation:
         rejections["volume_inflation"] += 1
         return False, 0.0, None, "volume_inflation"
 
-    # 4. Hard Rule: Class purity safeguard
-    purity = class_purity(merged_members, c, ctx.y, ctx.train_mask)
-    if class_purity_safeguard and purity < 1.0:
-        rejections["class_purity"] += 1
-        return False, 0.0, None, "class_purity"
-
-    # Compute score terms
-    center_dist = np.linalg.norm(fmnn.center(box_i) - fmnn.center(box_j))
-    max_dist = np.sqrt(n_dims)
-    geometry = float(np.clip(1.0 - (center_dist / (max_dist + 1e-12)), 0.0, 1.0))
-
-    if beta > 0.0:
-        graph_assoc = graph_association(box_i.members, box_j.members, ctx.adj_csr, ctx.degree)
-    else:
-        graph_assoc = 0.0
-    graph_assoc = float(np.clip(graph_assoc, 0.0, 1.0))
-
-    class_cons = float(np.clip(purity, 0.0, 1.0))
-
-    # Risk calculation: average of (volume inflation, neighbor label conflict, other-class overlap)
-    agr, _ = neighbor_label_agreement(merged_members, c, ctx.adj_csr, ctx.y, ctx.train_mask)
-    conflict = float(np.clip(1.0 - agr, 0.0, 1.0))
-    other_overlap_fraction = 0.0  # Already guaranteed 0 by Rule 2
-    risk = float(np.clip((inflation + conflict + other_overlap_fraction) / 3.0, 0.0, 1.0))
-
-    M = float(alpha * geometry + beta * graph_assoc + delta * class_cons - eta * risk)
-
-    if M < tau_merge:
-        rejections["threshold"] += 1
-        return False, M, None, "threshold"
-
     components = {
         "geometry": geometry,
         "graph": graph_assoc,
-        "consistency": class_cons,
+        "consistency": 1.0,
         "risk": risk,
     }
     return True, M, components, "accepted"
@@ -231,6 +309,7 @@ def gshr_merge(
     graph_ctx: Any,
     cfg_merge: dict[str, Any],
     train_data: Any = None,
+    fast: bool | None = None,
 ) -> tuple[FMNN, MergeLog]:
     """Execute Graph-Structure-Aware Hyperbox Merging.
 
@@ -239,6 +318,7 @@ def gshr_merge(
         graph_ctx: GraphContext or GraphData container.
         cfg_merge: Merging configuration dictionary (merge section of config).
         train_data: Optional reference to training data.
+        fast: Flag to enable fast merge path (default True or from config).
 
     Returns:
         (new_fmnn, merge_log)
@@ -246,6 +326,9 @@ def gshr_merge(
     start_time = time.perf_counter()
     new_fmnn = fmnn.copy()
     ctx = _unpack_graph_ctx(graph_ctx)
+
+    if fast is None:
+        fast = bool(cfg_merge.get("fast", True))
 
     # Config unpacking
     alpha = float(cfg_merge.get("alpha", 0.35))
@@ -285,6 +368,26 @@ def gshr_merge(
     )
     cache.build_all(new_fmnn)
 
+    # Fast structures: indicator product B.T @ A @ B, volumes, and label counts
+    box_edges: dict[tuple[int, int], int] | None = None
+    vol_dict: dict[int, int] | None = None
+    label_counts: dict[int, dict[int, int]] | None = None
+
+    if fast:
+        box_edges = build_box_adjacency(new_fmnn, ctx.adj_csr)
+        vol_dict = {
+            bid: int(np.sum(ctx.degree[b.members])) if len(b.members) > 0 else 0
+            for bid, b in new_fmnn.boxes.items()
+        }
+        label_counts = {}
+        for bid, b in new_fmnn.boxes.items():
+            counts: dict[int, int] = {}
+            for u in b.members:
+                if ctx.train_mask[u]:
+                    lbl = int(ctx.y[u])
+                    counts[lbl] = counts.get(lbl, 0) + 1
+            label_counts[bid] = counts
+
     # Candidate pair set: (min_id, max_id)
     candidate_pairs: set[tuple[int, int]] = set()
 
@@ -318,6 +421,10 @@ def gshr_merge(
             theta=theta,
             class_purity_safeguard=class_purity_safeguard,
             rejections=rejections,
+            fast=fast,
+            box_edges=box_edges,
+            vol_dict=vol_dict,
+            label_counts=label_counts,
         )
         if accepted:
             heapq.heappush(heap, (-M, bid1, bid2))
@@ -334,29 +441,41 @@ def gshr_merge(
         box_i = new_fmnn.boxes[bid1]
         box_j = new_fmnn.boxes[bid2]
 
-        # Re-verify acceptance against current state of model
-        temp_rejections: dict[str, int] = {k: 0 for k in rejections}
-        accepted, current_M, comps, reason = _evaluate_candidate_pair(
-            box_i=box_i,
-            box_j=box_j,
-            fmnn=new_fmnn,
-            ctx=ctx,
-            alpha=alpha,
-            beta=beta,
-            delta=delta,
-            eta=eta,
-            tau_merge=tau_merge,
-            max_volume_inflation=max_volume_inflation,
-            theta=theta,
-            class_purity_safeguard=class_purity_safeguard,
-            rejections=temp_rejections,
-        )
-        if not accepted:
-            for k, count in temp_rejections.items():
-                rejections[k] += count
-            continue
-
-        assert comps is not None
+        if not fast:
+            # Re-verify acceptance against current state of model in slow mode
+            temp_rejections: dict[str, int] = {k: 0 for k in rejections}
+            accepted, current_M, comps, reason = _evaluate_candidate_pair(
+                box_i=box_i,
+                box_j=box_j,
+                fmnn=new_fmnn,
+                ctx=ctx,
+                alpha=alpha,
+                beta=beta,
+                delta=delta,
+                eta=eta,
+                tau_merge=tau_merge,
+                max_volume_inflation=max_volume_inflation,
+                theta=theta,
+                class_purity_safeguard=class_purity_safeguard,
+                rejections=temp_rejections,
+                fast=False,
+            )
+            if not accepted:
+                for k, count in temp_rejections.items():
+                    rejections[k] += count
+                continue
+            assert comps is not None
+        else:
+            # In fast mode: verify cross-class overlap against any boxes created since (bid1, bid2) was scored
+            v_m = np.minimum(box_i.v, box_j.v)
+            w_m = np.maximum(box_i.w, box_j.w)
+            temp_box = HyperBox(id=-1, v=v_m, w=w_m, cls=box_i.cls, members=[])
+            other_boxes = [b for b in new_fmnn.boxes.values() if b.cls != box_i.cls]
+            if any(new_fmnn.boxes_overlap(temp_box, b_oth) for b_oth in other_boxes):
+                rejections["cross_class_overlap"] += 1
+                continue
+            current_M = M
+            comps = {"geometry": 0.0, "graph": 0.0, "consistency": 1.0, "risk": 0.0}
 
         # Execute merge
         new_id = new_fmnn.next_id
@@ -377,6 +496,27 @@ def gshr_merge(
         new_fmnn.remove_box(bid1)
         new_fmnn.remove_box(bid2)
         new_fmnn.add_box(merged_box)
+
+        if fast and box_edges is not None and vol_dict is not None and label_counts is not None:
+            vol_dict[new_id] = vol_dict.get(bid1, 0) + vol_dict.get(bid2, 0)
+            vol_dict.pop(bid1, None)
+            vol_dict.pop(bid2, None)
+
+            # Update edges: for every other remaining box k
+            for k in list(new_fmnn.boxes.keys()):
+                if k != new_id:
+                    e1 = box_edges.pop((min(bid1, k), max(bid1, k)), 0)
+                    e2 = box_edges.pop((min(bid2, k), max(bid2, k)), 0)
+                    if e1 + e2 > 0:
+                        box_edges[(min(new_id, k), max(new_id, k))] = e1 + e2
+
+            # Update label counts
+            lbls_new = dict(label_counts.get(bid1, {}))
+            for lbl, cnt in label_counts.get(bid2, {}).items():
+                lbls_new[lbl] = lbls_new.get(lbl, 0) + cnt
+            label_counts[new_id] = lbls_new
+            label_counts.pop(bid1, None)
+            label_counts.pop(bid2, None)
 
         cache.drop(bid1)
         cache.drop(bid2)
@@ -419,6 +559,10 @@ def gshr_merge(
                     theta=theta,
                     class_purity_safeguard=class_purity_safeguard,
                     rejections=rejections,
+                    fast=fast,
+                    box_edges=box_edges,
+                    vol_dict=vol_dict,
+                    label_counts=label_counts,
                 )
                 if acc:
                     heapq.heappush(heap, (-sc, other_pair[0], other_pair[1]))

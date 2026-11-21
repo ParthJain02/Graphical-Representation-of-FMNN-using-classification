@@ -118,11 +118,15 @@ class FMNN:
         scores = np.zeros((num_points, self.num_classes), dtype=np.float64)
 
         box_pool = list(self.boxes.values()) if boxes is None else boxes
+        if not box_pool:
+            return scores
+
+        # Evaluate all candidate boxes in a single pass of membership_matrix
+        mat = self.membership_matrix(Z, box_pool)
         for c in range(self.num_classes):
-            c_boxes = [b for b in box_pool if b.cls == c]
-            if c_boxes:
-                mat = self.membership_matrix(Z, c_boxes)
-                scores[:, c] = np.max(mat, axis=1)
+            c_indices = [i for i, b in enumerate(box_pool) if b.cls == c]
+            if c_indices:
+                scores[:, c] = np.max(mat[:, c_indices], axis=1)
 
         return scores
 
@@ -417,12 +421,14 @@ class FMNN:
         Z_train: np.ndarray,
         y_train: np.ndarray,
         node_ids: list[int] | np.ndarray,
+        cached_train_mem: np.ndarray | None = None,
+        id_to_col: dict[int, int] | None = None,
     ) -> dict[int, int]:
         """Reassign every training node to the box of its own class with highest membership (vectorized)."""
         for box in self.boxes.values():
             box.members.clear()
 
-        Z_arr = np.asarray(Z_train, dtype=np.float64)
+        Z_arr = np.asarray(Z_train, dtype=np.float64) if cached_train_mem is None else None
         y_arr = np.asarray(y_train, dtype=np.int64)
         ids_arr = np.asarray(node_ids, dtype=np.int64)
         assignments: dict[int, int] = {}
@@ -434,14 +440,23 @@ class FMNN:
             c_rows = np.nonzero(y_arr == c)[0]
             if len(c_rows) == 0:
                 continue
-            mat = self.membership_matrix(Z_arr[c_rows], c_boxes)
-            best_cols = np.argmax(mat, axis=1)
+
+            if cached_train_mem is not None and id_to_col is not None:
+                c_cols = [id_to_col[b.id] for b in c_boxes]
+                if len(c_cols) == 1:
+                    best_cols = np.zeros(len(c_rows), dtype=np.int64)
+                else:
+                    mat = cached_train_mem[np.ix_(c_rows, c_cols)]
+                    best_cols = np.argmax(mat, axis=1)
+            else:
+                mat = self.membership_matrix(Z_arr[c_rows], c_boxes)
+                best_cols = np.argmax(mat, axis=1)
+
             for row_pos, col_idx in zip(c_rows, best_cols):
                 nid = int(ids_arr[int(row_pos)])
                 box = c_boxes[int(col_idx)]
                 box.members.append(nid)
                 assignments[nid] = box.id
-            del mat, best_cols
 
         return assignments
 
@@ -469,8 +484,20 @@ class FMNN:
         return sorted([b for b in self.boxes.values() if b.cls == c], key=lambda b: b.id)
 
     def copy(self) -> FMNN:
-        """Create a deep copy of the FMNN model."""
-        return copy.deepcopy(self)
+        """Create a deep copy of the FMNN model with copied hyperboxes."""
+        new_model = FMNN(theta=self.theta, gamma=self.gamma)
+        new_model.num_classes = self.num_classes
+        new_model.n_dims = self.n_dims
+        new_model.next_id = self.next_id
+        for bid, b in self.boxes.items():
+            new_model.boxes[bid] = HyperBox(
+                id=b.id,
+                v=b.v.copy(),
+                w=b.w.copy(),
+                cls=b.cls,
+                members=list(b.members),
+            )
+        return new_model
 
     def remove_box(self, box_id: int) -> None:
         """Remove a hyperbox by id."""

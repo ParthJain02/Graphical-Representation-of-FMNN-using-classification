@@ -54,3 +54,6 @@ run:
 safeguards:
   class_purity: true
   graph_association: true
+
+refine:
+  fast: true

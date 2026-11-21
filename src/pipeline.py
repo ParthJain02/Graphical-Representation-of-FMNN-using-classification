@@ -27,7 +27,13 @@ from src.fmnn import FMNN
 from src.gnn import GNNClassifier, train_gnn
 from src.merge import GraphContext, fast_gshr_merge, geometry_only_merge, gshr_merge
 from src.metrics import classification_metrics, compactness_metrics, compute_box_coverage, measure_prediction_latency
-from src.prune import geometry_only_prune, gshr_prune
+from src.prune import (
+    RefinementMembershipContext,
+    _metrics_from_confusion_matrix,
+    compute_prune_importance,
+    geometry_only_prune,
+    gshr_prune,
+)
 from src.utils import get_device, set_seed
 
 
@@ -369,6 +375,7 @@ class SeedContext:
     scaler: EmbeddingScaler | None = None
     ensemble_models: list[GNNClassifier] | None = None
     ensemble_train_time: float = 0.0
+    emb_extract_time: float = 0.0
 
 
 # Return unified end-to-end test prediction latency when unified_latency is active.
@@ -677,10 +684,12 @@ def prepare_seed_context(
     gnn_train_time = time.perf_counter() - t0_gnn
 
     # 2. Extract and scale embeddings (scaler fitted strictly on training nodes)
+    t0_emb = time.perf_counter()
     Z = extract_embeddings(gnn_model, data, device=device)
     clip_setting = bool(cfg.get("embed", {}).get("clip", True))
     l2_norm_setting = bool(cfg.get("embed", {}).get("l2_norm", False))
     Z_scaled, scaler = fit_scaler_and_transform(Z, data.train_idx, clip=clip_setting, l2_norm=l2_norm_setting)
+    emb_extract_time = time.perf_counter() - t0_emb
 
     # Extract training arrays
     train_idx = data.train_idx.cpu().numpy()
@@ -717,6 +726,7 @@ def prepare_seed_context(
         base_val_macro_f1=val_metrics_base["macro_f1"],
         base_val_acc=val_metrics_base["accuracy"],
         scaler=scaler,
+        emb_extract_time=emb_extract_time,
     )
 
 
@@ -751,16 +761,226 @@ def select_hyperparameters(
 
     theta = float(cfg.get("fmnn", {}).get("theta", base_fmnn.theta))
     safeguards = cfg.get("safeguards", {})
+    is_fast = bool(cfg.get("refine", {}).get("fast", True))
 
     candidates: list[dict[str, Any]] = []
+    merge_time = 0.0
+    prune_time = 0.0
+    mem_build_time = 0.0
+    importance_time = 0.0
+    trial_loops_time = 0.0
+    materialize_time = 0.0
 
-    if variant in ["B4", "graph_merge_only"]:
+    if is_fast and variant in ["B6", "gshr_full"]:
+        # FAST MODE for B6:
+        # Fixed tau_merge from config (no grid sweep over tau_merge)
+        t0_m = time.perf_counter()
+        fixed_tau_m = float(cfg.get("merge", {}).get("tau_merge", 0.5))
+        m_cfg = dict(cfg.get("merge", {}))
+        m_cfg["tau_merge"] = fixed_tau_m
+        m_cfg["theta"] = theta
+        m_cfg["safeguards"] = safeguards
+        m_cfg["fast"] = True
+        merged_model, _ = gshr_merge(base_fmnn, graph_ctx, m_cfg, fast=True)
+        merge_time = time.perf_counter() - t0_m
+
+        t0_p = time.perf_counter()
+        t0_mem = time.perf_counter()
+        # Build RefinementMembershipContext once inside the timed prune block
+        mem_ctx = RefinementMembershipContext.build(
+            fmnn=merged_model,
+            Z_train=Z_train,
+            train_ids=train_ids,
+            Z_val=Z_val,
+            val_ids=list(range(len(Z_val))),
+        )
+        val_mem_matrix = mem_ctx.val_mem
+        train_mem_matrix = mem_ctx.train_mem
+        id_to_col = mem_ctx.id_to_col
+        box_list = sorted(merged_model.boxes.values(), key=lambda b: b.id)
+        mem_build_time = time.perf_counter() - t0_mem
+
+        # Precompute box importance once
+        t0_imp = time.perf_counter()
+        p_cfg_base = dict(cfg.get("prune", {}))
+        p_cfg_base["safeguards"] = safeguards
+        p_cfg_base["fast_mode"] = True
+        cached_importance = compute_prune_importance(
+            fmnn=merged_model,
+            ctx=graph_ctx,
+            Z_train=Z_train,
+            train_ids_list=train_ids,
+            cfg_prune=p_cfg_base,
+            train_mem_matrix=train_mem_matrix,
+            id_to_col=id_to_col,
+            fast_mode=True,
+        )
+        importance_time = time.perf_counter() - t0_imp
+
+        # Compute baseline validation state once on merged_model across threshold trials
+        active_cols_init: dict[int, list[int]] = {c: [] for c in range(num_classes)}
+        for col_idx, b in enumerate(box_list):
+            active_cols_init[b.cls].append(col_idx)
+
+        init_val_scores = np.zeros((len(Z_val), num_classes), dtype=np.float64)
+        for c in range(num_classes):
+            cols_c = active_cols_init[c]
+            if cols_c:
+                init_val_scores[:, c] = np.max(val_mem_matrix[:, cols_c], axis=1)
+
+        init_val_preds = np.argmax(init_val_scores, axis=1)
+        y_val_int = np.asarray(y_val, dtype=np.int64)
+        init_cm = np.bincount(
+            y_val_int * num_classes + init_val_preds,
+            minlength=num_classes * num_classes,
+        ).reshape(num_classes, num_classes)
+        init_metrics = _metrics_from_confusion_matrix(init_cm, len(Z_val), num_classes)
+
+        # Sweep only tau_prune using cached validation matrices and deferred materialization
+        t0_trials = time.perf_counter()
+        for tau_p in tau_prune_grid:
+            p_cfg = dict(p_cfg_base)
+            p_cfg["tau_prune"] = tau_p
+            active_box_ids, prune_log = gshr_prune(
+                fmnn=merged_model,
+                graph_ctx=graph_ctx,
+                cfg_prune=p_cfg,
+                Z_train=Z_train,
+                y_train=y_train,
+                train_ids=train_ids,
+                Z_val=Z_val,
+                y_val=y_val,
+                cached_val_mem=val_mem_matrix,
+                cached_train_mem=train_mem_matrix,
+                cached_importance=cached_importance,
+                fast_mode=True,
+                init_val_scores=init_val_scores,
+                init_val_preds=init_val_preds,
+                init_cm=init_cm,
+                init_metrics=init_metrics,
+                defer_materialization=True,
+                mem_ctx=mem_ctx,
+            )
+            val_f1 = prune_log.val_macro_f1_after
+            candidates.append({
+                "tau_merge": fixed_tau_m,
+                "tau_prune": tau_p,
+                "val_f1": val_f1,
+                "num_boxes": len(active_box_ids),
+                "active_box_ids": active_box_ids,
+                "prune_log": prune_log,
+                "_parent_fmnn": merged_model,
+                "_mem_ctx": mem_ctx,
+            })
+        trial_loops_time = time.perf_counter() - t0_trials
+        prune_time = time.perf_counter() - t0_p
+
+    elif is_fast and variant in ["B4", "graph_merge_only"]:
+        fixed_tau_m = float(cfg.get("merge", {}).get("tau_merge", 0.5))
+        m_cfg = dict(cfg.get("merge", {}))
+        m_cfg["tau_merge"] = fixed_tau_m
+        m_cfg["theta"] = theta
+        m_cfg["safeguards"] = safeguards
+        m_cfg["fast"] = True
+        cand_fmnn, _ = gshr_merge(base_fmnn, graph_ctx, m_cfg, fast=True)
+
+        val_preds = cand_fmnn.predict(Z_val)
+        val_f1 = classification_metrics(y_val, val_preds, num_classes)["macro_f1"]
+        candidates.append({
+            "tau_merge": fixed_tau_m,
+            "tau_prune": None,
+            "val_f1": val_f1,
+            "num_boxes": cand_fmnn.num_boxes(),
+            "model": cand_fmnn,
+        })
+
+    elif is_fast and variant in ["B5", "graph_prune_only"]:
+        mem_ctx = RefinementMembershipContext.build(
+            fmnn=base_fmnn,
+            Z_train=Z_train,
+            train_ids=train_ids,
+            Z_val=Z_val,
+            val_ids=list(range(len(Z_val))),
+        )
+        val_mem_matrix = mem_ctx.val_mem
+        train_mem_matrix = mem_ctx.train_mem
+        id_to_col = mem_ctx.id_to_col
+        box_list = sorted(base_fmnn.boxes.values(), key=lambda b: b.id)
+
+        p_cfg_base = dict(cfg.get("prune", {}))
+        p_cfg_base["safeguards"] = safeguards
+        p_cfg_base["fast_mode"] = True
+        cached_importance = compute_prune_importance(
+            fmnn=base_fmnn,
+            ctx=graph_ctx,
+            Z_train=Z_train,
+            train_ids_list=train_ids,
+            cfg_prune=p_cfg_base,
+            train_mem_matrix=train_mem_matrix,
+            id_to_col=id_to_col,
+            fast_mode=True,
+        )
+
+        active_cols_init = {c: [] for c in range(num_classes)}
+        for col_idx, b in enumerate(box_list):
+            active_cols_init[b.cls].append(col_idx)
+
+        init_val_scores = np.zeros((len(Z_val), num_classes), dtype=np.float64)
+        for c in range(num_classes):
+            cols_c = active_cols_init[c]
+            if cols_c:
+                init_val_scores[:, c] = np.max(val_mem_matrix[:, cols_c], axis=1)
+
+        init_val_preds = np.argmax(init_val_scores, axis=1)
+        y_val_int = np.asarray(y_val, dtype=np.int64)
+        init_cm = np.bincount(
+            y_val_int * num_classes + init_val_preds,
+            minlength=num_classes * num_classes,
+        ).reshape(num_classes, num_classes)
+        init_metrics = _metrics_from_confusion_matrix(init_cm, len(Z_val), num_classes)
+
+        for tau_p in tau_prune_grid:
+            p_cfg = dict(p_cfg_base)
+            p_cfg["tau_prune"] = tau_p
+            active_box_ids, prune_log = gshr_prune(
+                fmnn=base_fmnn,
+                graph_ctx=graph_ctx,
+                cfg_prune=p_cfg,
+                Z_train=Z_train,
+                y_train=y_train,
+                train_ids=train_ids,
+                Z_val=Z_val,
+                y_val=y_val,
+                cached_val_mem=val_mem_matrix,
+                cached_train_mem=train_mem_matrix,
+                cached_importance=cached_importance,
+                fast_mode=True,
+                init_val_scores=init_val_scores,
+                init_val_preds=init_val_preds,
+                init_cm=init_cm,
+                init_metrics=init_metrics,
+                defer_materialization=True,
+                mem_ctx=mem_ctx,
+            )
+            val_f1 = prune_log.val_macro_f1_after
+            candidates.append({
+                "tau_merge": None,
+                "tau_prune": tau_p,
+                "val_f1": val_f1,
+                "num_boxes": len(active_box_ids),
+                "active_box_ids": active_box_ids,
+                "prune_log": prune_log,
+                "_parent_fmnn": base_fmnn,
+                "_mem_ctx": mem_ctx,
+            })
+
+    elif variant in ["B4", "graph_merge_only"]:
         for tau_m in tau_merge_grid:
             m_cfg = dict(cfg["merge"])
             m_cfg["tau_merge"] = tau_m
             m_cfg["theta"] = theta
             m_cfg["safeguards"] = safeguards
-            cand_fmnn, _ = gshr_merge(base_fmnn, graph_ctx, m_cfg)
+            cand_fmnn, _ = gshr_merge(base_fmnn, graph_ctx, m_cfg, fast=False)
 
             val_preds = cand_fmnn.predict(Z_val)
             val_f1 = classification_metrics(y_val, val_preds, num_classes)["macro_f1"]
@@ -786,6 +1006,7 @@ def select_hyperparameters(
                 train_ids=train_ids,
                 Z_val=Z_val,
                 y_val=y_val,
+                fast_mode=False,
             )
             val_preds = cand_fmnn.predict(Z_val)
             val_f1 = classification_metrics(y_val, val_preds, num_classes)["macro_f1"]
@@ -803,12 +1024,15 @@ def select_hyperparameters(
             m_cfg["tau_merge"] = tau_m
             m_cfg["theta"] = theta
             m_cfg["safeguards"] = safeguards
-            merged_model, _ = gshr_merge(base_fmnn, graph_ctx, m_cfg)
+            t0_m = time.perf_counter()
+            merged_model, _ = gshr_merge(base_fmnn, graph_ctx, m_cfg, fast=False)
+            merge_time += time.perf_counter() - t0_m
 
             for tau_p in tau_prune_grid:
                 p_cfg = dict(cfg["prune"])
                 p_cfg["tau_prune"] = tau_p
                 p_cfg["safeguards"] = safeguards
+                t0_p = time.perf_counter()
                 cand_fmnn, _ = gshr_prune(
                     fmnn=merged_model,
                     graph_ctx=graph_ctx,
@@ -818,7 +1042,9 @@ def select_hyperparameters(
                     train_ids=train_ids,
                     Z_val=Z_val,
                     y_val=y_val,
+                    fast_mode=False,
                 )
+                prune_time += time.perf_counter() - t0_p
                 val_preds = cand_fmnn.predict(Z_val)
                 val_f1 = classification_metrics(y_val, val_preds, num_classes)["macro_f1"]
                 candidates.append({
@@ -862,6 +1088,7 @@ def select_hyperparameters(
                 })
 
     # Selection rule
+    t0_sel = time.perf_counter()
     threshold_f1 = base_val_macro_f1 - 0.01
     valid_candidates = [c for c in candidates if c["val_f1"] >= threshold_f1]
     if not valid_candidates:
@@ -874,7 +1101,49 @@ def select_hyperparameters(
         return (c["num_boxes"], -c["val_f1"], tm, tp)
 
     best = min(valid_candidates, key=sort_key)
+
+    # Materialize winning model if deferred
+    t0_mat = time.perf_counter()
+    if "model" not in best:
+        parent_fmnn = best["_parent_fmnn"]
+        best_mem_ctx = best["_mem_ctx"]
+        best_active_ids = best["active_box_ids"]
+        best_model = parent_fmnn.copy()
+        for bid in list(best_model.boxes.keys()):
+            if bid not in best_active_ids:
+                best_model.remove_box(bid)
+
+        best_mem_ctx.reassign_train_members(best_model, best_active_ids, y_train)
+
+        # Post-pruning assertions on the final materialized winning model
+        all_members = []
+        for b in best_model.boxes.values():
+            all_members.extend(b.members)
+        assert len(all_members) == len(train_ids), "Member count does not match total training nodes"
+        assert len(all_members) == len(set(all_members)), "Duplicate training node member assignments found"
+        assert best_model.cross_class_overlap_count() == 0, "Cross-class overlap detected after pruning"
+        assert best_model.num_boxes() <= parent_fmnn.num_boxes(), "Box count cannot increase during pruning"
+        after_classes_present = {b.cls for b in best_model.boxes.values()}
+        assert after_classes_present == {b.cls for b in parent_fmnn.boxes.values()}, "Pruning must never remove the last box of any class"
+
+        # Cache exact validation predictions on the materialized model
+        best_val_preds = best_mem_ctx.compute_val_predictions(best_active_ids, num_classes)
+        setattr(best_model, "_cached_val_preds", best_val_preds)
+        best["model"] = best_model
+    materialize_time = time.perf_counter() - t0_mat
+
+    val_select_time = time.perf_counter() - t0_sel
     refine_time = time.perf_counter() - t0_refine
+
+    setattr(best["model"], "timing_breakdown", {
+        "merge_time": merge_time,
+        "prune_time": prune_time,
+        "val_select_time": val_select_time,
+        "mem_build_time": mem_build_time,
+        "importance_time": importance_time,
+        "trial_loops_time": trial_loops_time,
+        "materialize_time": materialize_time,
+    })
 
     return best["model"], best["tau_merge"], best["tau_prune"], refine_time
 
@@ -2398,7 +2667,9 @@ def run_single_seed(
             variant=canon_variant,
             base_val_macro_f1=seed_ctx.base_val_macro_f1,
         )
-        val_preds_final = final_model.predict(Z_val)
+        val_preds_final = getattr(final_model, "_cached_val_preds", None)
+        if val_preds_final is None:
+            val_preds_final = final_model.predict(Z_val)
         val_m = classification_metrics(y_val, val_preds_final, data.num_classes)
         val_acc = val_m["accuracy"]
         val_macro_f1 = val_m["macro_f1"]
@@ -2406,7 +2677,8 @@ def run_single_seed(
     # 3. Final Test Evaluation ONCE at the very end
     t0_pred = time.perf_counter()
     test_preds = final_model.predict(Z_test)
-    pred_latency_per_node = (time.perf_counter() - t0_pred) / len(test_idx)
+    pred_time = time.perf_counter() - t0_pred
+    pred_latency_per_node = pred_time / len(test_idx)
 
     # Access test labels strictly at final evaluation
     y_test = data.y[data.test_idx].cpu().numpy()
@@ -2437,6 +2709,7 @@ def run_single_seed(
         "dataset": data.name,
         "seed": seed,
         "variant": variant_name,
+        "model": final_model,
         "test_accuracy": test_metrics["accuracy"],
         "test_macro_f1": test_metrics["macro_f1"],
         "test_micro_f1": test_metrics["micro_f1"],
@@ -2454,6 +2727,20 @@ def run_single_seed(
         "fmnn_fit_time": fmnn_fit_time,
         "refine_time": refine_time,
         "pred_latency_per_node": pred_latency_per_node,
+        "pred_time": pred_time,
+        "timing_breakdown": {
+            "gnn_train_s": gnn_train_time,
+            "emb_extract_s": getattr(seed_ctx, "emb_extract_time", 0.0),
+            "base_fmnn_fit_s": fmnn_fit_time,
+            "merge_s": getattr(final_model, "timing_breakdown", {}).get("merge_time", 0.0),
+            "prune_s": getattr(final_model, "timing_breakdown", {}).get("prune_time", 0.0),
+            "val_select_s": getattr(final_model, "timing_breakdown", {}).get("val_select_time", 0.0),
+            "mem_build_s": getattr(final_model, "timing_breakdown", {}).get("mem_build_time", 0.0),
+            "importance_s": getattr(final_model, "timing_breakdown", {}).get("importance_time", 0.0),
+            "trial_loops_s": getattr(final_model, "timing_breakdown", {}).get("trial_loops_time", 0.0),
+            "materialize_s": getattr(final_model, "timing_breakdown", {}).get("materialize_time", 0.0),
+            "pred_s": pred_time,
+        },
         "peak_memory_mb": peak_mem / (1024 * 1024),
     }
 
