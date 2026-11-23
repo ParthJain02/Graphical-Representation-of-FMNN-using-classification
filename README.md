@@ -321,16 +321,14 @@ python -u scripts/run_v4_benchmark.py --datasets Cora CiteSeer
 python -u scripts/run_v4_benchmark.py --finalize-only
 ```
 
-### 6. Interactive Visual Decision Boundary Demo
+### 6. Run Canonical Test Suite
 ```bash
-python standalone_fmnn.py
+pytest -v
 ```
 
-### 7. Rebuild Full Research Report Deterministically
-```bash
-# Regenerates REPORT.md (282 KB, 34 tables, 14 figures) directly from results/
-python make_report_md.py
-```
+### 7. Comprehensive Master Research Guide
+For full theoretical proofs, complete multi-seed accuracy benchmarks, per-class confusion matrices, asymptotic complexity breakdowns, profiling results, and viva defense Q&A, refer to:
+- [`PROJECT_COMPREHENSIVE_GUIDE.md`](PROJECT_COMPREHENSIVE_GUIDE.md)
 
 ---
 
@@ -381,12 +379,8 @@ python make_report_md.py
 │   ├── test_fmnn.py / test_merge.py       # Simpson expansion, contraction, & merge tests
 │   ├── test_prune.py / test_pipeline.py   # Pruning safeguards & hybrid inference tests
 │   └── test_graph_stats.py                # Conductance & homophily verification
-├── PROJECT_COMPREHENSIVE_GUIDE.md         # Master academic & engineering guide (B1-B14 taxonomy & viva Q&A)
+├── PROJECT_COMPREHENSIVE_GUIDE.md         # Master academic & engineering guide (Architecture, EDA, Benchmarks, Viva Q&A)
 ├── Final_Research_Report.pdf              # Official compiled publication report (308 KB)
-├── standalone_fmnn.py                     # Standalone educational visual demo script
-├── make_report_md.py                      # Automated generator for REPORT.md from results/
-├── REPORT.md                              # Comprehensive final research report (282 KB)
-├── RESEARCH_REPORT.md                     # Research notes & findings
 ├── requirements.txt                       # Environment dependencies
 └── pytest.ini                             # Pytest execution configuration
 ```
@@ -403,7 +397,7 @@ To ensure reproducible, scientifically valid conclusions:
 2. **Simpson Structural Purity**:
    - Simpson contraction is enforced during expansion and safe merging, guaranteeing that hyperboxes of differing classes never intersect (**`cross_class_overlap = 0`** across all benchmarks).
 3. **Exact Reported Metrics**:
-   - All numbers in this repository and `REPORT.md` are directly loaded from verified artifacts in `results/`. No number is estimated or invented. Missing data (such as Chameleon v4 or PubMed multi-seed runs) is explicitly declared.
+   - All numbers in this repository and `PROJECT_COMPREHENSIVE_GUIDE.md` are directly loaded from verified artifacts in `results/`. No number is estimated or invented. Missing data (such as Chameleon v4 or PubMed multi-seed runs) is explicitly declared.
 
 ---
 
