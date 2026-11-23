@@ -269,6 +269,7 @@ def _generate_candidates_for_box(
     ctx: GraphContext,
     knn_candidates: int,
     use_graph_edges: bool,
+    box_edges: dict[tuple[int, int], int] | None = None,
 ) -> set[tuple[int, int]]:
     """Generate candidate same-class merge pairs involving box bid."""
     target_box = fmnn.boxes[bid]
@@ -294,12 +295,18 @@ def _generate_candidates_for_box(
 
     # Graph-adjacency candidates
     if use_graph_edges:
-        target_members = target_box.members
-        for b in same_class_boxes:
-            # Check edge connection with target
-            sub = ctx.adj_csr[target_members, :][:, b.members]
-            if sub.nnz > 0:
-                pairs.add((min(bid, b.id), max(bid, b.id)))
+        if box_edges is not None:
+            for b in same_class_boxes:
+                pair_key = (min(bid, b.id), max(bid, b.id))
+                if box_edges.get(pair_key, 0) > 0:
+                    pairs.add(pair_key)
+        else:
+            target_members = target_box.members
+            for b in same_class_boxes:
+                # Check edge connection with target
+                sub = ctx.adj_csr[target_members, :][:, b.members]
+                if sub.nnz > 0:
+                    pairs.add((min(bid, b.id), max(bid, b.id)))
 
     return pairs
 
@@ -398,6 +405,7 @@ def gshr_merge(
             ctx=ctx,
             knn_candidates=knn_candidates,
             use_graph_edges=use_graph_edges,
+            box_edges=box_edges,
         )
         candidate_pairs.update(box_pairs)
 
@@ -540,6 +548,7 @@ def gshr_merge(
             ctx=ctx,
             knn_candidates=knn_candidates,
             use_graph_edges=use_graph_edges,
+            box_edges=box_edges,
         )
 
         for other_pair in sorted(new_candidates):
