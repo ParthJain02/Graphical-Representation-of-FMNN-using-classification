@@ -1308,11 +1308,17 @@ def run_single_seed(
 
     variant_clean = variant.strip().upper()
     variant_aliases = {
+        "B1_GNN_SOFTMAX": "B1",
         "GNN_SOFTMAX": "B1",
+        "B2_GNN_FMNN": "B2",
         "GNN_FMNN": "B2",
+        "B3_GEO_MERGE_PRUNE": "B3",
         "GEO_MERGE_PRUNE": "B3",
+        "B4_GRAPH_MERGE_ONLY": "B4",
         "GRAPH_MERGE_ONLY": "B4",
+        "B5_GRAPH_PRUNE_ONLY": "B5",
         "GRAPH_PRUNE_ONLY": "B5",
+        "B6_GSHR_FULL": "B6",
         "GSHR_FULL": "B6",
         "B7": "B7_HYBRID",
         "B7_HYBRID": "B7_HYBRID",
